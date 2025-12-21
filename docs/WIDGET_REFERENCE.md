@@ -620,6 +620,78 @@ venom_skeleton_animate(skeleton, delta_time);
 
 ---
 
+### VenomCarousel
+
+Image and widget carousel with auto-play and indicators.
+
+```c
+VenomWidget* carousel = venom_carousel_create().value;
+
+/* Add slides */
+venom_carousel_add_item((VenomCarousel*)carousel, image1);
+venom_carousel_add_item((VenomCarousel*)carousel, image2);
+
+/* Configure */
+venom_carousel_set_auto_play((VenomCarousel*)carousel, VENOM_TRUE, 3000);
+venom_carousel_set_show_arrows((VenomCarousel*)carousel, VENOM_TRUE);
+venom_carousel_set_indicator((VenomCarousel*)carousel, VENOM_CAROUSEL_DOTS);
+```
+
+---
+
+### VenomTable
+
+Data grid with sortable columns and row selection.
+
+```c
+/* Define columns */
+VenomTableColumn cols[] = {
+    { .key = "id", .title = "ID", .width = 50, .sortable = VENOM_TRUE },
+    { .key = "name", .title = "Name", .flex = 1, .sortable = VENOM_TRUE },
+    { .key = "dpt", .title = "Department", .width = 150 }
+};
+
+VenomWidget* table = venom_table_create(cols, 3).value;
+
+/* Add rows */
+const char* row1[] = { "1", "John Doe", "Engineering" };
+venom_table_add_row((VenomTable*)table, row1, 3);
+
+/* API */
+venom_table_set_striped((VenomTable*)table, VENOM_TRUE);
+venom_table_set_row_height((VenomTable*)table, 40.0f);
+```
+
+---
+
+### VenomChart
+
+Statistical charts (Line, Bar, Pie, Donut).
+
+```c
+VenomWidget* chart = venom_chart_create(VENOM_CHART_BAR).value;
+
+/* Set labels */
+const char* labels[] = { "Jan", "Feb", "Mar", "Apr" };
+venom_chart_set_labels((VenomChart*)chart, labels, 4);
+
+/* Add dataset */
+VenomF32 values[] = { 10, 25, 15, 30 };
+VenomDataset ds = {
+    .label = "Sales",
+    .values = values,
+    .value_count = 4,
+    .color = VENOM_COLOR_BLUE
+};
+venom_chart_add_dataset((VenomChart*)chart, &ds);
+
+/* Configure */
+venom_chart_set_title((VenomChart*)chart, "Quarterly Sales");
+venom_chart_set_legend_visible((VenomChart*)chart, VENOM_TRUE);
+```
+
+---
+
 ## Navigation Widgets
 
 ### VenomTabBar & VenomTabView
@@ -753,6 +825,79 @@ venom_grid_view_set_item_size(grid, 0, 150.0f);  /* 0 = auto width */
 for (int i = 0; i < 20; i++) {
     venom_grid_view_add_item(grid, "Item");
 }
+```
+
+---
+
+### VenomAppBar
+
+Material Design app bar with title, actions, and navigation control.
+
+```c
+VenomWidget* appbar = venom_appbar_create("My App").value;
+
+/* Configure */
+venom_appbar_set_subtitle((VenomAppBar*)appbar, "Dashboard");
+venom_appbar_set_elevation((VenomAppBar*)appbar, 4.0f);
+venom_appbar_set_center_title((VenomAppBar*)appbar, VENOM_FALSE);
+
+/* Add entry point (leading) */
+venom_appbar_set_leading((VenomAppBar*)appbar, menu_icon);
+
+/* Add actions */
+venom_appbar_add_action((VenomAppBar*)appbar, search_btn);
+venom_appbar_add_action((VenomAppBar*)appbar, settings_btn);
+```
+
+---
+
+### VenomBottomNav
+
+Bottom navigation bar for top-level views.
+
+```c
+/* Define items */
+VenomNavItem items[] = {
+    { .icon = "Home", .label = "Home" },
+    { .icon = "Search", .label = "Explore" },
+    { .icon = "Person", .label = "Profile" }
+};
+
+VenomWidget* nav = venom_bottom_nav_create(items, 3).value;
+
+/* Handle selection */
+void on_nav(VenomI32 index, void* data) {
+    printf("Selected tab: %d\n", index);
+}
+venom_bottom_nav_set_on_change((VenomBottomNav*)nav, on_nav, NULL);
+
+/* API */
+venom_bottom_nav_set_selected((VenomBottomNav*)nav, 0);
+venom_bottom_nav_set_color((VenomBottomNav*)nav, VENOM_COLOR_BLUE);
+```
+
+---
+
+### VenomDrawer
+
+Navigation drawer (sidebar) with header and items.
+
+```c
+VenomWidget* drawer = venom_drawer_create().value;
+
+/* Set header */
+VenomWidget* header = create_user_header();
+venom_drawer_set_header((VenomDrawer*)drawer, header);
+
+/* Add items */
+venom_drawer_add_item((VenomDrawer*)drawer, "inbox", "Inbox", "12");
+venom_drawer_add_item((VenomDrawer*)drawer, "star", "Starred", NULL);
+venom_drawer_add_separator((VenomDrawer*)drawer);
+venom_drawer_add_item((VenomDrawer*)drawer, "settings", "Settings", NULL);
+
+/* Usage */
+venom_drawer_open((VenomDrawer*)drawer);
+venom_drawer_close((VenomDrawer*)drawer);
 ```
 
 ---

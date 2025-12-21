@@ -452,10 +452,10 @@ int venom_run_app(const VenomAppConfig* config) {
             needs_redraw = VENOM_TRUE;
         }
         
-        /* Draw every frame (game loop style - required for smooth animations) */
+        /* Draw every frame */
         if (g_app.root) {
             venom_canvas_clear(g_app.canvas, bg);
-            venom_widget_draw(g_app.root, g_app.canvas);
+            venom_widget_draw(g_app.root, g_app.canvas); // رسم دائم!
             venom_canvas_flush(g_app.canvas);
         }
         
