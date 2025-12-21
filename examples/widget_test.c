@@ -218,12 +218,14 @@ int main(int argc, char** argv) {
     VenomRectF bounds = {0, 0, (VenomF32)w, (VenomF32)h};
     venom_widget_layout(content, bounds);
     
-    /* Event loop */
+    /* Event loop with continuous animation for Batch 2 (Spinner) */
     VenomBool running = VENOM_TRUE;
     VenomBool redraw = VENOM_TRUE;
+    VenomBool continuous_animation = (current_batch == 2);  /* Batch 2 has Spinner */
     
     while (running) {
-        if (redraw) {
+        /* Always redraw for continuous animation (Spinner), otherwise only on demand */
+        if (redraw || continuous_animation) {
             venom_canvas_clear(canvas, venom_color_rgb(240,240,245));
             venom_widget_draw(content, canvas);
             venom_canvas_flush(canvas);
@@ -247,7 +249,9 @@ int main(int argc, char** argv) {
             }
             if (venom_widget_dispatch_event(content, &ev)) redraw = VENOM_TRUE;
         }
-        usleep(16000);
+        
+        /* Frame limiting: 60 FPS */
+        usleep(16667);
     }
     
     printf("\nCleaning up...\n");

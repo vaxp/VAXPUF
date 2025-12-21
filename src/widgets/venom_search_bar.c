@@ -141,12 +141,13 @@ static VenomBool search_bar_on_event(VenomWidget* widget, const VenomEvent* even
                 return VENOM_TRUE;
             }
             
-            /* Handle printable characters from key event text field */
-            if (event->text.text[0] >= 32 && event->text.text[0] < 127) {
+            /* Handle UTF-8 text input from XIM (supports all languages) */
+            if (event->text.text[0] != '\0' && (unsigned char)event->text.text[0] >= 32) {
                 const char* input = event->text.text;
                 VenomSize len = strlen(input);
                 
-                if (bar->text_len + len < bar->text_capacity) {
+                /* Ensure we have space (UTF-8 can be up to 4 bytes per char) */
+                if (bar->text_len + len < bar->text_capacity - 4) {
                     memmove(bar->text + bar->cursor_pos + len, bar->text + bar->cursor_pos,
                             bar->text_len - bar->cursor_pos + 1);
                     memcpy(bar->text + bar->cursor_pos, input, len);
