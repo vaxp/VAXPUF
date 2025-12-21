@@ -1,11 +1,8 @@
 /*
  * VENOMUI Animation System Demo
  * 
- * Demonstrates the complete animation system including:
- * - Easing functions
- * - Tween animations
- * - Spring animations
- * - Animation groups (sequence, parallel, stagger)
+ * Uses widget's draw() + needs_redraw for continuous animation updates.
+ * State managed via VenomCubit.
  */
 
 #include <venom/venomui.h>
@@ -13,137 +10,295 @@
 #include <sys/time.h>
 
 /* ============================================================================
- * DEMO STATE
+ * ANIMATION STATE (Cubit)
  * ============================================================================ */
 
-typedef struct {
-    VenomAnimation* tween;
+typedef struct AnimState {
+    VenomAnimation* x_anim;
+    VenomAnimation* y_anim;
+    VenomAnimation* color_anim;
     VenomSpringAnimation* spring;
-    VenomAnimationGroup* sequence;
+    
     VenomF32 box_x;
     VenomF32 box_y;
-    VenomF32 box_scale;
-    VenomColor box_color;
-    VenomEasing current_easing;
-} DemoState;
+    VenomF32 spring_x;
+    VenomF32 color_t;
+    
+    VenomEasing easing;
+    int easing_idx;
+    VenomBool paused;
+    
+    VenomF64 last_time;
+} AnimState;
 
-static DemoState g_demo = {0};
+VENOM_DEFINE_CUBIT(Anim, AnimState);
+static AnimCubit* g_cubit = NULL;
 
-/* Get current time in seconds */
-static VenomF64 get_time_seconds(void) {
+/* ============================================================================
+ * TIME
+ * ============================================================================ */
+
+static VenomF64 now_seconds(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return (VenomF64)tv.tv_sec + (VenomF64)tv.tv_usec / 1000000.0;
+    return (VenomF64)tv.tv_sec + (VenomF64)tv.tv_usec / 1e6;
 }
 
 /* ============================================================================
- * ANIMATION CALLBACKS
+ * CUBIT INIT
  * ============================================================================ */
 
-static void on_tween_update(VenomAnimation* anim, VenomF32 value, VenomF32 progress, void* user_data) {
-    (void)anim;
-    (void)progress;
-    (void)user_data;
-    g_demo.box_x = value;
+static void init_cubit(void) {
+    g_cubit = VENOM_CUBIT_NEW(Anim, AnimState);
+    if (!g_cubit) return;
+    
+    AnimState* s = &g_cubit->state;
+    s->box_x = 50; s->box_y = 50; s->spring_x = 50; s->color_t = 0;
+    s->easing = VENOM_EASING_ELASTIC_OUT;
+    s->easing_idx = VENOM_EASING_ELASTIC_OUT;
+    s->paused = VENOM_FALSE;
+    s->last_time = now_seconds();
+    
+    /* X anim */
+    VenomResultPtr r = venom_animation_create(50, 380, 2.0f);
+    if (r.ok) {
+        s->x_anim = (VenomAnimation*)r.value;
+        venom_animation_set_easing(s->x_anim, s->easing);
+        venom_animation_set_repeat(s->x_anim, VENOM_REPEAT_PING_PONG, -1);
+        venom_animation_start(s->x_anim);
+    }
+    
+    /* Y anim */
+    r = venom_animation_create(50, 160, 1.5f);
+    if (r.ok) {
+        s->y_anim = (VenomAnimation*)r.value;
+        venom_animation_set_easing(s->y_anim, VENOM_EASING_BOUNCE_OUT);
+        venom_animation_set_repeat(s->y_anim, VENOM_REPEAT_PING_PONG, -1);
+        venom_animation_start(s->y_anim);
+    }
+    
+    /* Color anim */
+    r = venom_animation_create(0, 1, 3.0f);
+    if (r.ok) {
+        s->color_anim = (VenomAnimation*)r.value;
+        venom_animation_set_easing(s->color_anim, VENOM_EASING_SINE_IN_OUT);
+        venom_animation_set_repeat(s->color_anim, VENOM_REPEAT_PING_PONG, -1);
+        venom_animation_start(s->color_anim);
+    }
+    
+    /* Spring */
+    r = venom_spring_animation_create_preset(50, 360, VENOM_SPRING_WOBBLY);
+    if (r.ok) {
+        s->spring = (VenomSpringAnimation*)r.value;
+        venom_spring_animation_start(s->spring);
+    }
 }
 
-static void on_spring_update(VenomAnimation* anim, VenomF32 value, VenomF32 progress, void* user_data) {
-    (void)anim;
-    (void)progress;
-    (void)user_data;
-    g_demo.box_y = value;
-}
-
-static void on_animation_complete(VenomAnimation* anim, VenomAnimationState state, void* user_data) {
-    (void)anim;
-    (void)state;
-    (void)user_data;
-    printf("Animation completed!\n");
+static void cleanup_cubit(void) {
+    if (!g_cubit) return;
+    AnimState* s = &g_cubit->state;
+    if (s->x_anim) venom_unref(s->x_anim);
+    if (s->y_anim) venom_unref(s->y_anim);
+    if (s->color_anim) venom_unref(s->color_anim);
+    if (s->spring) venom_unref(s->spring);
+    venom_cubit_destroy(g_cubit);
+    g_cubit = NULL;
 }
 
 /* ============================================================================
- * DEMO INITIALIZATION
+ * ACTIONS
  * ============================================================================ */
 
-static void init_animations(void) {
-    g_demo.box_x = 50.0f;
-    g_demo.box_y = 200.0f;
-    g_demo.box_scale = 1.0f;
-    g_demo.box_color = venom_color_rgb(63, 81, 181);
-    g_demo.current_easing = VENOM_EASING_CUBIC_OUT;
-    
-    /* Create tween animation */
-    VenomResultPtr tween_result = venom_animation_create(50.0f, 500.0f, 1.0f);
-    if (tween_result.ok) {
-        g_demo.tween = (VenomAnimation*)tween_result.value;
-        venom_animation_set_easing(g_demo.tween, VENOM_EASING_ELASTIC_OUT);
-        venom_animation_set_on_update(g_demo.tween, on_tween_update, NULL);
-        venom_animation_set_on_complete(g_demo.tween, on_animation_complete, NULL);
-        venom_animation_set_repeat(g_demo.tween, VENOM_REPEAT_PING_PONG, -1);
-        venom_animation_start(g_demo.tween);
-    }
-    
-    /* Create spring animation */
-    VenomResultPtr spring_result = venom_spring_animation_create_preset(
-        200.0f, 400.0f, VENOM_SPRING_WOBBLY
-    );
-    if (spring_result.ok) {
-        g_demo.spring = (VenomSpringAnimation*)spring_result.value;
-        venom_spring_animation_set_on_update(g_demo.spring, on_spring_update, NULL);
-        venom_spring_animation_start(g_demo.spring);
-    }
-    
-    printf("Animation Demo Started!\n");
-    printf("- Tween animation: x position with elastic ease\n");
-    printf("- Spring animation: y position with wobbly preset\n");
-    printf("Press ESC to exit\n");
+static void do_bounce(void) {
+    if (!g_cubit || !g_cubit->state.spring) return;
+    venom_spring_animation_add_velocity(g_cubit->state.spring, -400);
+    if (g_cubit->state.spring->state != VENOM_ANIM_STATE_RUNNING)
+        venom_spring_animation_start(g_cubit->state.spring);
+    printf("🏀 Bounce!\n");
 }
 
-static void cleanup_animations(void) {
-    if (g_demo.tween) {
-        venom_unref(g_demo.tween);
-        g_demo.tween = NULL;
+static void do_next_easing(void) {
+    if (!g_cubit) return;
+    AnimState* s = &g_cubit->state;
+    s->easing_idx = (s->easing_idx + 1) % VENOM_EASING_COUNT;
+    s->easing = (VenomEasing)s->easing_idx;
+    if (s->x_anim) {
+        venom_animation_set_easing(s->x_anim, s->easing);
+        venom_animation_start(s->x_anim);
     }
-    if (g_demo.spring) {
-        venom_unref(g_demo.spring);
-        g_demo.spring = NULL;
-    }
-    if (g_demo.sequence) {
-        venom_unref(g_demo.sequence);
-        g_demo.sequence = NULL;
+    printf("🔄 Easing: %s\n", venom_easing_name(s->easing));
+}
+
+static void do_pause(void) {
+    if (!g_cubit) return;
+    AnimState* s = &g_cubit->state;
+    s->paused = !s->paused;
+    if (s->paused) {
+        if (s->x_anim) venom_animation_pause(s->x_anim);
+        if (s->y_anim) venom_animation_pause(s->y_anim);
+        if (s->color_anim) venom_animation_pause(s->color_anim);
+        printf("⏸️ Paused\n");
+    } else {
+        if (s->x_anim) venom_animation_resume(s->x_anim);
+        if (s->y_anim) venom_animation_resume(s->y_anim);
+        if (s->color_anim) venom_animation_resume(s->color_anim);
+        printf("▶️ Resumed\n");
     }
 }
+
+/* ============================================================================
+ * ANIMATION CANVAS WIDGET
+ * ============================================================================ */
+
+typedef struct AnimCanvas {
+    VenomWidget base;
+} AnimCanvas;
+
+static void canvas_measure(VenomWidget* w, VenomF32 aw, VenomF32 ah, VenomF32* ow, VenomF32* oh) {
+    (void)w; (void)aw; (void)ah;
+    *ow = 480; *oh = 260;
+}
+
+static void canvas_draw(VenomWidget* widget, VenomCanvas* canvas) {
+    if (!g_cubit) return;
+    AnimState* s = &g_cubit->state;
+    
+    /* Delta time calculation */
+    VenomF64 now = now_seconds();
+    VenomF64 dt = now - s->last_time;
+    s->last_time = now;
+    
+    /* UPDATE ANIMATIONS */
+    if (!s->paused) {
+        if (s->x_anim && venom_animation_is_running(s->x_anim)) {
+            venom_animation_update(s->x_anim, dt);
+            s->box_x = venom_animation_get_value(s->x_anim);
+        }
+        if (s->y_anim && venom_animation_is_running(s->y_anim)) {
+            venom_animation_update(s->y_anim, dt);
+            s->box_y = venom_animation_get_value(s->y_anim);
+        }
+        if (s->color_anim && venom_animation_is_running(s->color_anim)) {
+            venom_animation_update(s->color_anim, dt);
+            s->color_t = venom_animation_get_value(s->color_anim);
+        }
+        if (s->spring && venom_spring_animation_is_running(s->spring)) {
+            venom_spring_animation_update(s->spring, dt);
+            s->spring_x = venom_spring_animation_get_value(s->spring);
+        }
+    }
+    
+    /* DRAW BACKGROUND */
+    VenomRectF bg = {0, 0, widget->bounds.width, widget->bounds.height};
+    VenomPaint bgp = venom_paint_fill(venom_color_rgb(25, 28, 38));
+    venom_canvas_draw_rounded_rect(canvas, bg, 10, &bgp);
+    
+    /* Grid */
+    VenomPaint grid = venom_paint_stroke(venom_color_rgba(70,70,90,60), 1);
+    for (VenomF32 x = 50; x < widget->bounds.width; x += 50)
+        venom_canvas_draw_line(canvas, x, 0, x, widget->bounds.height, &grid);
+    for (VenomF32 y = 50; y < widget->bounds.height; y += 50)
+        venom_canvas_draw_line(canvas, 0, y, widget->bounds.width, y, &grid);
+    
+    /* BOX 1: Tween with color */
+    VenomColor c1 = venom_color_rgb(255, 87, 34);
+    VenomColor c2 = venom_color_rgb(156, 39, 176);
+    VenomColor col = venom_color_lerp(c1, c2, s->color_t);
+    VenomRectF box1 = {s->box_x, s->box_y, 55, 55};
+    VenomPaint p1 = venom_paint_fill(col);
+    venom_canvas_draw_rounded_rect(canvas, box1, 8, &p1);
+    VenomPaint txt = venom_paint_fill(VENOM_COLOR_WHITE);
+    venom_canvas_draw_text(canvas, "Tween", s->box_x+5, s->box_y+33, NULL, &txt);
+    
+    /* BOX 2: Spring */
+    VenomRectF box2 = {s->spring_x, 170, 45, 45};
+    VenomPaint p2 = venom_paint_fill(venom_color_rgb(76, 175, 80));
+    venom_canvas_draw_rounded_rect(canvas, box2, 22, &p2);
+    venom_canvas_draw_text(canvas, "Spring", s->spring_x+1, 188, NULL, &txt);
+    
+    /* Circle following X */
+    VenomPaint p3 = venom_paint_fill(venom_color_rgb(33, 150, 243));
+    venom_canvas_draw_circle(canvas, s->box_x + 27, 230, 18, &p3);
+    
+    /* Info */
+    char info[80];
+    snprintf(info, sizeof(info), "Easing: %s | %s", 
+             venom_easing_name(s->easing), s->paused ? "PAUSED" : "PLAYING");
+    VenomPaint inf = venom_paint_fill(venom_color_rgb(180, 180, 200));
+    venom_canvas_draw_text(canvas, info, 10, widget->bounds.height - 10, NULL, &inf);
+    
+    /* REQUEST NEXT FRAME - This keeps animations running! */
+    widget->needs_redraw = VENOM_TRUE;
+}
+
+static VenomBool canvas_event(VenomWidget* w, const VenomEvent* e) {
+    (void)w;
+    if (e->type == VENOM_EVENT_MOUSE_BUTTON_DOWN) {
+        do_bounce();
+        do_next_easing();
+        return VENOM_TRUE;
+    }
+    return VENOM_FALSE;
+}
+
+static const VenomWidgetClass anim_canvas_class = {
+    .class_name = "AnimCanvas",
+    .instance_size = sizeof(AnimCanvas),
+    .parent_class = &venom_widget_class,
+    .init = NULL,
+    .destroy = NULL,
+    .measure = canvas_measure,
+    .layout = NULL,
+    .draw = canvas_draw,
+    .on_event = canvas_event,
+    .on_state_changed = NULL,
+};
+
+static VenomWidget* anim_canvas_new(void) {
+    VenomResultPtr r = venom_widget_create(&anim_canvas_class);
+    return r.ok ? (VenomWidget*)r.value : NULL;
+}
+
+/* ============================================================================
+ * BUTTON CALLBACKS
+ * ============================================================================ */
+
+static void on_pause_btn(VenomButton* b, void* d) { (void)b; (void)d; do_pause(); }
+static void on_bounce_btn(VenomButton* b, void* d) { (void)b; (void)d; do_bounce(); }
+static void on_easing_btn(VenomButton* b, void* d) { (void)b; (void)d; do_next_easing(); }
 
 /* ============================================================================
  * UI BUILD
  * ============================================================================ */
 
-static VenomWidget* build_ui(void* user_data) {
-    (void)user_data;
+static VenomWidget* build_ui(void* ud) {
+    (void)ud;
     
     return venom_col(
-        .padding = (VenomInsets){ 20, 20, 20, 20 },
-        .gap = 16,
-        .background = venom_color_rgb(250, 250, 252),
+        .padding = (VenomInsets){14,14,14,14},
+        .gap = 10,
+        .background = venom_color_rgb(35, 38, 48),
         .children = (VenomWidget*[]){
-            venom_text("🎬 Animation System Demo", 
-                .size = 24, 
-                .color = venom_color_rgb(33, 33, 33)
-            ),
-            venom_text("Demonstrating: Easing, Tween, Spring, Color Lerp",
-                .size = 14,
-                .color = venom_color_rgb(100, 100, 100)
-            ),
-            venom_sized_box(600, 300),  /* Placeholder for animated box */
+            venom_text("🎬 VENOMUI Animation Demo", 
+                .size = 18, .color = venom_color_rgb(255,255,255)),
+            
             venom_row(
-                .gap = 12,
+                .gap = 8,
                 .children = (VenomWidget*[]){
-                    venom_btn("🔄 Restart", .on_click = NULL),
-                    venom_btn("⏸️ Pause", .on_click = NULL),
-                    venom_btn("▶️ Resume", .on_click = NULL),
+                    venom_btn("⏯️ Pause", .on_click = on_pause_btn, 
+                              .color = venom_color_rgb(76, 175, 80)),
+                    venom_btn("🏀 Bounce", .on_click = on_bounce_btn, 
+                              .color = venom_color_rgb(255, 152, 0)),
+                    venom_btn("🔄 Easing", .on_click = on_easing_btn, 
+                              .color = venom_color_rgb(33, 150, 243)),
                     NULL
                 }
             ),
+            
+            anim_canvas_new(),
+            
+            venom_text("Click canvas or buttons • ESC to exit",
+                .size = 11, .color = venom_color_rgb(130, 130, 150)),
             NULL
         }
     );
@@ -154,128 +309,22 @@ static VenomWidget* build_ui(void* user_data) {
  * ============================================================================ */
 
 int main(void) {
-    printf("=== VENOMUI Animation System Demo ===\n\n");
+    printf("=== VENOMUI Animation Demo ===\n");
+    printf("Using VenomCubit + needs_redraw pattern\n\n");
     
-    /* Print available easing functions */
-    printf("Available easing functions (%d total):\n", VENOM_EASING_COUNT);
-    for (int i = 0; i < VENOM_EASING_COUNT; i++) {
-        printf("  [%2d] %s\n", i, venom_easing_name((VenomEasing)i));
-    }
-    printf("\n");
+    init_cubit();
     
-    /* Test easing functions */
-    printf("Easing function test (t=0.5):\n");
-    const VenomEasing test_easings[] = {
-        VENOM_EASING_LINEAR,
-        VENOM_EASING_QUAD_IN_OUT,
-        VENOM_EASING_CUBIC_OUT,
-        VENOM_EASING_ELASTIC_OUT,
-        VENOM_EASING_BOUNCE_OUT,
-    };
-    for (size_t i = 0; i < sizeof(test_easings)/sizeof(test_easings[0]); i++) {
-        VenomF32 result = venom_easing_apply(test_easings[i], 0.5f);
-        printf("  %-16s: %.4f\n", venom_easing_name(test_easings[i]), result);
-    }
-    printf("\n");
+    int ret = VENOM_APP(
+        .title = "VENOMUI Animation Demo",
+        .width = 530,
+        .height = 380,
+        .background = venom_color_rgb(35, 38, 48),
+        .build = build_ui,
+        .debug = VENOM_TRUE
+    );
     
-    /* Test color interpolation */
-    printf("Color interpolation test:\n");
-    VenomColor red = venom_color_rgb(255, 0, 0);
-    VenomColor blue = venom_color_rgb(0, 0, 255);
-    for (VenomF32 t = 0.0f; t <= 1.0f; t += 0.25f) {
-        VenomColor c = venom_color_lerp(red, blue, t);
-        printf("  t=%.2f: RGB(%3d, %3d, %3d)\n", t, c.r, c.g, c.b);
-    }
-    printf("\n");
+    cleanup_cubit();
     
-    /* Test animation creation and update */
-    printf("Animation lifecycle test:\n");
-    VenomResultPtr result = venom_animation_create(0.0f, 100.0f, 1.0f);
-    if (result.ok) {
-        VenomAnimation* anim = (VenomAnimation*)result.value;
-        venom_animation_set_easing(anim, VENOM_EASING_CUBIC_IN_OUT);
-        venom_animation_start(anim);
-        
-        printf("  Created animation: from=%.0f, to=%.0f, duration=%.1fs\n",
-               anim->from_value, anim->to_value, anim->duration);
-        
-        /* Simulate animation updates */
-        VenomF64 dt = 0.1;
-        for (int frame = 0; frame < 12; frame++) {
-            VenomBool running = venom_animation_update(anim, dt);
-            printf("  Frame %2d: value=%.2f, progress=%.2f, running=%s\n",
-                   frame, anim->current_value, anim->progress,
-                   running ? "yes" : "no");
-        }
-        
-        venom_unref(anim);
-        printf("  Animation freed successfully\n");
-    }
-    printf("\n");
-    
-    /* Test spring animation */
-    printf("Spring animation test:\n");
-    VenomResultPtr spring_result = venom_spring_animation_create(0.0f, 100.0f);
-    if (spring_result.ok) {
-        VenomSpringAnimation* spring = (VenomSpringAnimation*)spring_result.value;
-        venom_spring_animation_apply_preset(spring, VENOM_SPRING_WOBBLY);
-        venom_spring_animation_start(spring);
-        
-        printf("  Preset: WOBBLY (stiffness=%.0f, damping=%.0f)\n",
-               spring->stiffness, spring->damping);
-        
-        /* Simulate spring updates */
-        VenomF64 dt = 0.016;  /* ~60fps */
-        for (int frame = 0; frame < 10; frame++) {
-            venom_spring_animation_update(spring, dt);
-            printf("  Frame %2d: value=%.2f, velocity=%.2f\n",
-                   frame, spring->current_value, spring->velocity);
-        }
-        
-        venom_unref(spring);
-        printf("  Spring freed successfully\n");
-    }
-    printf("\n");
-    
-    /* Test animation group */
-    printf("Animation group test (sequence):\n");
-    VenomResultPtr group_result = venom_animation_group_create(VENOM_ANIM_GROUP_SEQUENCE);
-    if (group_result.ok) {
-        VenomAnimationGroup* group = (VenomAnimationGroup*)group_result.value;
-        
-        /* Create child animations */
-        VenomAnimation* anim1 = (VenomAnimation*)venom_unwrap_ptr(
-            venom_animation_create(0.0f, 50.0f, 0.5f));
-        VenomAnimation* anim2 = (VenomAnimation*)venom_unwrap_ptr(
-            venom_animation_create(50.0f, 100.0f, 0.5f));
-        
-        venom_animation_group_add(group, anim1);
-        venom_animation_group_add(group, anim2);
-        
-        /* Release our refs (group owns them now) */
-        venom_unref(anim1);
-        venom_unref(anim2);
-        
-        printf("  Group created with %u children\n", 
-               venom_animation_group_child_count(group));
-        
-        venom_animation_group_start(group);
-        
-        /* Simulate updates */
-        VenomF64 dt = 0.2;
-        for (int frame = 0; frame < 8; frame++) {
-            VenomBool running = venom_animation_group_update(group, dt);
-            printf("  Frame %2d: running=%s, state=%d\n",
-                   frame, running ? "yes" : "no", group->state);
-        }
-        
-        venom_unref(group);
-        printf("  Group freed successfully (children auto-freed)\n");
-    }
-    printf("\n");
-    
-    printf("=== All animation tests passed! ===\n");
-    printf("Memory leaks should be 0 (check with -Ddebug_memory=true)\n");
-    
-    return 0;
+    printf("\nBye!\n");
+    return ret;
 }

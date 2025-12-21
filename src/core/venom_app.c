@@ -42,6 +42,30 @@ static struct {
     VenomU32 window_height;
 } g_app = {0};
 
+/**
+ * @brief Recursively check if any widget in the tree needs redraw
+ * 
+ * This is essential for animations - child widgets can set needs_redraw
+ * in their draw() function to request continuous updates.
+ */
+static VenomBool any_widget_needs_redraw(VenomWidget* widget) {
+    if (!widget) return VENOM_FALSE;
+    
+    /* Check this widget */
+    if (widget->needs_redraw) {
+        return VENOM_TRUE;
+    }
+    
+    /* Check children recursively */
+    for (VenomU32 i = 0; i < widget->children_count; i++) {
+        if (any_widget_needs_redraw(widget->children[i])) {
+            return VENOM_TRUE;
+        }
+    }
+    
+    return VENOM_FALSE;
+}
+
 /* ============================================================================
  * WIDGET BUILDERS
  * ============================================================================ */
@@ -311,12 +335,11 @@ int venom_run_app(const VenomAppConfig* config) {
             needs_redraw = VENOM_TRUE;
         }
         
-        /* Draw */
-        if (needs_redraw && g_app.root) {
+        /* Draw every frame (game loop style - required for smooth animations) */
+        if (g_app.root) {
             venom_canvas_clear(g_app.canvas, bg);
             venom_widget_draw(g_app.root, g_app.canvas);
             venom_canvas_flush(g_app.canvas);
-            needs_redraw = VENOM_FALSE;
         }
         
         /* Process events */
