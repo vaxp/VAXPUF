@@ -483,3 +483,18 @@ void venom_widget_set_visible(VenomWidget* widget, VenomBool visible) {
     widget->visible = visible;
     venom_widget_invalidate_layout(widget->parent);
 }
+
+/* ============================================================================
+ * CONST WIDGETS
+ * ============================================================================ */
+
+void venom_widget_set_const(VenomWidget* widget, VenomBool is_const) {
+    if (!widget) return;
+    widget->is_const = is_const;
+}
+
+void venom_widget_set_const_key(VenomWidget* widget, const char* key) {
+    if (!widget) return;
+    widget->const_key = key;  /* Note: key is borrowed, not copied */
+}
+

@@ -40,7 +40,84 @@ static struct {
     clock_t start_time;
     VenomU32 window_width;
     VenomU32 window_height;
+    
+    /* Const Widget Registry */
+    VenomWidget** const_widgets;
+    VenomU32 const_count;
+    VenomU32 const_capacity;
 } g_app = {0};
+
+/* ============================================================================
+ * CONST WIDGET REGISTRY
+ * ============================================================================ */
+
+/**
+ * @brief Recursively collect const widgets before rebuild
+ */
+static void collect_const_widgets(VenomWidget* widget) {
+    if (!widget) return;
+    
+    if (widget->is_const && widget->const_key) {
+        /* Grow registry if needed */
+        if (g_app.const_count >= g_app.const_capacity) {
+            VenomU32 new_cap = g_app.const_capacity ? g_app.const_capacity * 2 : 16;
+            VenomWidget** new_arr = venom_realloc(g_app.const_widgets, 
+                                                   g_app.const_capacity * sizeof(VenomWidget*),
+                                                   new_cap * sizeof(VenomWidget*));
+            if (new_arr) {
+                g_app.const_widgets = new_arr;
+                g_app.const_capacity = new_cap;
+            }
+        }
+        
+        if (g_app.const_count < g_app.const_capacity) {
+            venom_ref(widget);  /* Keep alive during rebuild */
+            g_app.const_widgets[g_app.const_count++] = widget;
+        }
+    }
+    
+    /* Process children */
+    for (VenomU32 i = 0; i < widget->children_count; i++) {
+        collect_const_widgets(widget->children[i]);
+    }
+}
+
+/**
+ * @brief Find a const widget by key
+ */
+static VenomWidget* find_const_widget(const char* key) {
+    if (!key) return NULL;
+    
+    for (VenomU32 i = 0; i < g_app.const_count; i++) {
+        const char* widget_key = g_app.const_widgets[i]->const_key;
+        if (widget_key && strcmp(widget_key, key) == 0) {
+            return g_app.const_widgets[i];
+        }
+    }
+    return NULL;
+}
+
+/**
+ * @brief Release all stored const widgets
+ */
+static void release_const_widgets(void) {
+    for (VenomU32 i = 0; i < g_app.const_count; i++) {
+        venom_unref(g_app.const_widgets[i]);
+    }
+    g_app.const_count = 0;
+}
+
+/**
+ * @brief Free const registry memory
+ */
+static void free_const_registry(void) {
+    release_const_widgets();
+    if (g_app.const_widgets) {
+        venom_free(g_app.const_widgets, g_app.const_capacity * sizeof(VenomWidget*));
+        g_app.const_widgets = NULL;
+        g_app.const_capacity = 0;
+    }
+}
 
 /**
  * @brief Recursively check if any widget in the tree needs redraw
@@ -225,6 +302,10 @@ void venom_rebuild(void) {
     g_app.needs_rebuild = VENOM_TRUE;
 }
 
+VenomWidget* venom_get_const_widget(const char* key) {
+    return find_const_widget(key);
+}
+
 VenomF64 venom_elapsed_time(void) {
     return (VenomF64)(clock() - g_app.start_time) / CLOCKS_PER_SEC;
 }
@@ -326,11 +407,18 @@ int venom_run_app(const VenomAppConfig* config) {
     while (g_app.running) {
         /* Handle rebuild request */
         if (g_app.needs_rebuild) {
+            /* Collect const widgets before destroying old tree */
+            collect_const_widgets(g_app.root);
+            
             venom_unref(g_app.root);
             g_app.root = config->build(config->user_data);
             if (g_app.root) {
                 venom_widget_layout(g_app.root, bounds);
             }
+            
+            /* Release references to const widgets (they're now in new tree or should be freed) */
+            release_const_widgets();
+            
             g_app.needs_rebuild = VENOM_FALSE;
             needs_redraw = VENOM_TRUE;
         }
@@ -390,8 +478,8 @@ int venom_run_app(const VenomAppConfig* config) {
             }
         }
         
-        /* Small sleep */
-        usleep(16000);  /* ~60fps */
+        /* Small sleep (~60fps) */
+        usleep(16000);
     }
     
     if (config->debug) {
@@ -400,6 +488,7 @@ int venom_run_app(const VenomAppConfig* config) {
     
     /* Cleanup */
     if (g_app.root) venom_unref(g_app.root);
+    free_const_registry();  /* Free const widget registry */
     venom_unref(g_app.canvas);
     venom_display_close(g_app.display);
     venom_shutdown();

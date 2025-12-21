@@ -29,6 +29,11 @@ typedef struct AnimState {
     VenomBool paused;
     
     VenomF64 last_time;
+    
+    /* FPS counter */
+    VenomU32 frame_count;
+    VenomF64 fps_time;
+    VenomF32 current_fps;
 } AnimState;
 
 VENOM_DEFINE_CUBIT(Anim, AnimState);
@@ -58,6 +63,9 @@ static void init_cubit(void) {
     s->easing_idx = VENOM_EASING_ELASTIC_OUT;
     s->paused = VENOM_FALSE;
     s->last_time = now_seconds();
+    s->frame_count = 0;
+    s->fps_time = now_seconds();
+    s->current_fps = 0;
     
     /* X anim */
     VenomResultPtr r = venom_animation_create(50, 380, 2.0f);
@@ -168,6 +176,15 @@ static void canvas_draw(VenomWidget* widget, VenomCanvas* canvas) {
     VenomF64 dt = now - s->last_time;
     s->last_time = now;
     
+    /* FPS calculation */
+    s->frame_count++;
+    VenomF64 fps_elapsed = now - s->fps_time;
+    if (fps_elapsed >= 1.0) {
+        s->current_fps = (VenomF32)s->frame_count / (VenomF32)fps_elapsed;
+        s->frame_count = 0;
+        s->fps_time = now;
+    }
+    
     /* UPDATE ANIMATIONS */
     if (!s->paused) {
         if (s->x_anim && venom_animation_is_running(s->x_anim)) {
@@ -220,9 +237,15 @@ static void canvas_draw(VenomWidget* widget, VenomCanvas* canvas) {
     VenomPaint p3 = venom_paint_fill(venom_color_rgb(33, 150, 243));
     venom_canvas_draw_circle(canvas, s->box_x + 27, 230, 18, &p3);
     
+    /* FPS display */
+    char fps_str[32];
+    snprintf(fps_str, sizeof(fps_str), "%.1f FPS", s->current_fps);
+    VenomPaint fps_paint = venom_paint_fill(venom_color_rgb(0, 255, 100));
+    venom_canvas_draw_text(canvas, fps_str, widget->bounds.width - 80, 20, NULL, &fps_paint);
+    
     /* Info */
-    char info[80];
-    snprintf(info, sizeof(info), "Easing: %s | %s", 
+    char info[100];
+    snprintf(info, sizeof(info), "%s | %s", 
              venom_easing_name(s->easing), s->paused ? "PAUSED" : "PLAYING");
     VenomPaint inf = venom_paint_fill(venom_color_rgb(180, 180, 200));
     venom_canvas_draw_text(canvas, info, 10, widget->bounds.height - 10, NULL, &inf);

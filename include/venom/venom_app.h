@@ -224,6 +224,15 @@ VenomWidget* venom_sized_box(VenomF32 width, VenomF32 height);
 void venom_rebuild(void);
 
 /**
+ * @brief Get a const widget by key (for reuse across rebuilds)
+ * 
+ * During build(), call this to get a previously created const widget.
+ * If found, returns the cached widget (you must ref it to use).
+ * If not found, create a new widget and mark it as const.
+ */
+VenomWidget* venom_get_const_widget(const char* key);
+
+/**
  * @brief Get elapsed time since app start (for animations)
  */
 VenomF64 venom_elapsed_time(void);

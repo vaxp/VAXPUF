@@ -139,6 +139,10 @@ struct VenomWidget {
     /* Focus */
     VenomBool focusable;    /* Can receive keyboard focus */
     
+    /* Const Widget System */
+    VenomBool is_const;         /* Widget won't be rebuilt */
+    const char* const_key;      /* Unique key for const lookup */
+    
     /* User data */
     void* user_data;
 };
@@ -330,6 +334,34 @@ void venom_widget_set_visible(VenomWidget* widget, VenomBool visible);
  */
 VENOM_INLINE VenomBool venom_widget_is_visible(const VenomWidget* widget) {
     return widget && widget->visible;
+}
+
+/* ============================================================================
+ * CONST WIDGETS
+ * ============================================================================ */
+
+/**
+ * @brief Mark widget as const (won't be rebuilt during venom_rebuild)
+ */
+void venom_widget_set_const(VenomWidget* widget, VenomBool is_const);
+
+/**
+ * @brief Set const key for lookup during rebuild
+ */
+void venom_widget_set_const_key(VenomWidget* widget, const char* key);
+
+/**
+ * @brief Check if widget is const
+ */
+VENOM_INLINE VenomBool venom_widget_is_const(const VenomWidget* widget) {
+    return widget && widget->is_const;
+}
+
+/**
+ * @brief Get const key
+ */
+VENOM_INLINE const char* venom_widget_get_const_key(const VenomWidget* widget) {
+    return widget ? widget->const_key : NULL;
 }
 
 /* ============================================================================
