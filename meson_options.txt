@@ -1,0 +1,8 @@
+option('examples', type: 'boolean', value: true,
+    description: 'Build example programs')
+
+option('tests', type: 'boolean', value: true,
+    description: 'Build unit tests')
+
+option('debug_memory', type: 'boolean', value: true,
+    description: 'Enable memory tracking and leak detection')
