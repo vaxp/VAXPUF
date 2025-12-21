@@ -112,6 +112,10 @@ widget_sources = files(
     'src/widgets/venom_number_input.c',
     'src/widgets/venom_color_swatch.c',
     'src/widgets/venom_toggle_button.c',
+    'src/widgets/venom_skeleton.c',
+    'src/widgets/venom_stepper.c',
+    'src/widgets/venom_rating.c',
+    'src/widgets/venom_link.c',
 )
 
 state_sources = files(

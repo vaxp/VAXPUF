@@ -67,6 +67,10 @@
 #include "venom/widgets/venom_color_swatch.h"
 #include "venom/widgets/venom_separator.h"
 #include "venom/widgets/venom_toggle_button.h"
+#include "venom/widgets/venom_skeleton.h"
+#include "venom/widgets/venom_stepper.h"
+#include "venom/widgets/venom_rating.h"
+#include "venom/widgets/venom_link.h"
 
 /* High-level API */
 #include "venom/venom_app.h"
