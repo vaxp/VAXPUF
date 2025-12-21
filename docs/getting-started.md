@@ -170,3 +170,42 @@ static void on_text_changed(VenomTextInput* input, const char* text, void* data)
 - [Widgets Guide](widgets.md) - All available widgets
 - [State Management](state-management.md) - Managing application state
 - [Theming](theming.md) - Customizing appearance
+
+## Optimization
+
+### Constant Widgets
+
+For static UI elements that don't change between rebuilds (like titles, icons, or static buttons), you can use `VENOM_CONST` to prevent unnecessary reallocation.
+
+**Why use it?**
+- Prevents destroying and recreating widgets every frame.
+- Significantly improves performance in complex apps.
+- Internal state of the widget (like scroll position) is preserved.
+
+**Example:**
+
+```c
+VenomWidget* build_app(void* data) {
+    return venom_center(
+        .children = VENOM_CHILDREN(
+            /* ✨ This label is created once and reused forever */
+            VENOM_CONST(venom_text("Static Title", .size = 24)),
+            
+            /* ⚠️ This label is recreated every build because it changes */
+            venom_text(dynamic_loop_counter_string),
+            
+            /* ✨ Complex sub-trees can also be const */
+            VENOM_CONST(venom_row(
+                .gap = 10, 
+                .children = VENOM_CHILDREN(
+                    venom_btn("Static Button 1"),
+                    venom_btn("Static Button 2")
+                )
+            ))
+        )
+    );
+}
+```
+
+The `VENOM_CONST` macro automatically generates a unique key for the widget based on its location in the code file.
+
