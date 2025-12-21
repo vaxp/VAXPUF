@@ -1,81 +1,117 @@
 # VENOMUI
 
-**إطار عمل واجهة مستخدم رسومية عالي الأداء مكتوب بـ C**
+**High-Performance GUI Framework for C**
 
-VENOMUI هو إطار GUI مصمم مع التركيز على:
-- 🧹 **إدارة ذاكرة صارمة** - Reference counting مع تتبع التسريبات
-- 🎨 **رسم عالي الأداء** - مبني على Skia
-- 🖥️ **وصول أصلي** - تكامل مباشر مع X11/Wayland
-- 🧩 **بنية قابلة للصيانة** - VTable inheritance واضح
+VENOMUI is a feature-rich GUI framework designed for:
+- 🧹 **Strict Memory Management** - Reference counting with leak detection
+- 🎨 **High Performance Rendering** - Built on Cairo/Skia
+- 🖥️ **Native Access** - Direct X11/Wayland integration
+- 🧩 **Maintainable Architecture** - Clear VTable inheritance
+- 📦 **45+ Ready-to-Use Widgets** - Complete UI toolkit
 
-## البنية الأساسية
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Quick Start](docs/QUICK_START.md) | Getting started guide |
+| [Widget Reference](docs/WIDGET_REFERENCE.md) | Complete API documentation |
+| [Cheat Sheet](docs/CHEAT_SHEET.md) | Quick reference |
+
+## Widget Library
+
+### Layout
+`Container` `Stack` `Spacer` `Divider` `SizedBox` `Padding` `SplitPane` `Scrollable`
+
+### Input Controls
+`Button` `Checkbox` `Switch` `Slider` `Radio` `TextInput` `TextArea` `Dropdown` `SearchBar` `NumberInput` `ToggleButton` `Rating`
+
+### Display
+`Label` `Image` `Icon` `Avatar` `Badge` `Chip` `Card` `ColorSwatch` `Link` `Skeleton`
+
+### Navigation
+`TabBar` `TabView` `Breadcrumb` `TreeView` `ListView` `GridView`
+
+### Feedback
+`Tooltip` `Dialog` `ContextMenu` `Notification` `Snackbar` `Spinner` `ProgressBar`
+
+### Multi-Step
+`Accordion` `Stepper`
+
+## Quick Example
+
+```c
+#include <venomui.h>
+
+void on_click(VenomWidget* btn, void* data) {
+    printf("Hello VENOMUI!\n");
+}
+
+int main(void) {
+    venom_init();
+    
+    VenomWindow* window = venom_window_create("My App", 800, 600);
+    
+    VenomWidget* content = venom_container(
+        .direction = VENOM_DIRECTION_VERTICAL,
+        .padding = (VenomInsets){ 20, 20, 20, 20 },
+        .spacing = 16
+    );
+    
+    venom_container_add_child(content, venom_label(.text = "Welcome!"));
+    venom_container_add_child(content, venom_button(.label = "Click Me", .on_click = on_click));
+    
+    venom_window_set_content(window, content);
+    venom_app_run();
+    venom_shutdown();
+    
+    return 0;
+}
+```
+
+## Building
+
+```bash
+# Dependencies (Debian/Ubuntu)
+sudo apt install meson ninja-build libx11-dev libcairo2-dev libpango1.0-dev libpng-dev
+
+# Build
+meson setup build
+meson compile -C build
+
+# Run example
+./build/examples/hello_world
+```
+
+## Project Structure
 
 ```
 VENOMUI/
 ├── include/venom/
-│   ├── core/           # الأنواع، الذاكرة، Ref counting، Results
+│   ├── core/           # Types, Memory, Ref counting
 │   ├── backend/        # X11/Wayland abstraction
-│   ├── graphics/       # Canvas API (Skia)
-│   └── widgets/        # Widget system
+│   ├── graphics/       # Canvas API
+│   ├── widgets/        # 45+ widget headers
+│   └── state/          # BLoC state management
 ├── src/
 │   ├── core/
 │   ├── backend/x11/
 │   ├── graphics/
-│   └── widgets/
-└── examples/
+│   ├── widgets/
+│   └── state/
+├── docs/               # Documentation
+└── examples/           # Example applications
 ```
 
-## المميزات الرئيسية
+## Roadmap
 
-### 1. إدارة الذاكرة
-```c
-// كل كائن مرجعي
-VenomButton* btn = venom_button_create("Click Me");
-venom_ref(btn);    // +1
-venom_unref(btn);  // -1, يُحرر تلقائياً عند 0
-```
-
-### 2. معالجة الأخطاء
-```c
-VenomResultPtr result = venom_display_open(VENOM_BACKEND_X11, NULL);
-if (!result.ok) {
-    printf("Error: %s\n", venom_error_string(result.error));
-    return;
-}
-VenomDisplay* display = result.value;
-```
-
-### 3. تخطيط Flexbox
-```c
-VenomContainer* row = venom_container_create_row();
-venom_container_set_gap(row, 10);
-venom_container_set_justify(row, VENOM_JUSTIFY_SPACE_BETWEEN);
-venom_widget_add_child(row, button1);
-venom_widget_add_child(row, button2);
-```
-
-## البناء
-
-```bash
-# التبعيات (Arch Linux)
-sudo pacman -S meson ninja libx11 skia
-
-# البناء
-meson setup build
-meson compile -C build
-
-# تشغيل المثال
-./build/examples/hello_world
-```
-
-## الخطوات القادمة
-
-- [ ] System Tray integration
+- [x] Core widget set (45 widgets)
+- [x] X11 backend
+- [x] Cairo rendering
 - [ ] Wayland backend
 - [ ] Theming system
-- [ ] More widgets (TextField, ScrollView, etc.)
+- [ ] Desktop widgets (TitleBar, Toolbar, StatusBar)
+- [ ] Date/Time pickers
 
-## الترخيص
+## License
 
 MIT License
-# -Venom-UI-Framework

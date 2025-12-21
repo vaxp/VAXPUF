@@ -596,7 +596,7 @@ void on_link_click(VenomLink* link, const char* url, void* data) {
 
 VenomWidget* link = venom_link(
     .text = "Visit Website",
-    .url = "https://example.com",
+    .url = "https://VAXP.ORG",
     .on_click = on_link_click
 );
 ```
