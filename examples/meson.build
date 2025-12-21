@@ -29,3 +29,8 @@ widget_test_exe = executable('widget_test',
     'widget_test.c',
     dependencies: venomui_dep,
 )
+
+animation_demo_exe = executable('animation_demo',
+    'animation_demo.c',
+    dependencies: venomui_dep,
+)

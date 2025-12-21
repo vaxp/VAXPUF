@@ -1,6 +1,11 @@
 /*
  * VENOMUI Widget Test Application
  * Tests 20 widgets across 3 batches
+ * 
+ * Features:
+ * - Event coalescing (MOUSE_MOVE → single event)
+ * - Fixed 60 FPS frame rate
+ * - Smooth Spinner animation
  */
 
 #define _DEFAULT_SOURCE
@@ -9,6 +14,7 @@
 #include <string.h>
 #include <X11/Xlib.h>
 #include <unistd.h>
+#include <sys/time.h>
 #include "venom/venomui.h"
 
 /* X11 display handle */
@@ -23,6 +29,13 @@ extern VenomResultPtr venom_canvas_create_for_xlib(Display* display, Window wind
                                                     Visual* visual, VenomU32 width, VenomU32 height);
 
 static int current_batch = 1;
+
+/* High precision time in microseconds */
+static VenomU64 get_time_us(void) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (VenomU64)tv.tv_sec * 1000000 + (VenomU64)tv.tv_usec;
+}
 
 /* ============================================================================
  * BATCH 1: Layout & Basic Widgets (7 widgets)
@@ -164,11 +177,15 @@ static VenomWidget* create_batch3(void) {
 }
 
 /* ============================================================================
- * MAIN
+ * MAIN - Optimized Event Loop with Coalescing
  * ============================================================================ */
+#define TARGET_FPS 144
+#define FRAME_TIME_US (1000000 / TARGET_FPS)
+
 int main(int argc, char** argv) {
     printf("╔═══════════════════════════════════════╗\n");
     printf("║  VENOMUI Widget Test (20 widgets)     ║\n");
+    printf("║  Optimized: Event Coalescing + 60 FPS ║\n");
     printf("╚═══════════════════════════════════════╝\n");
     
     if (argc > 1) {
@@ -203,6 +220,10 @@ int main(int argc, char** argv) {
     if (!cvs.ok) { printf("Canvas failed\n"); return 1; }
     VenomCanvas* canvas = (VenomCanvas*)cvs.value;
     
+    /* Create event queue for coalescing */
+    VenomEventQueue* event_queue = venom_event_queue_create(256);
+    if (!event_queue) { printf("Event queue failed\n"); return 1; }
+    
     /* Create batch content */
     VenomWidget* content = NULL;
     switch (current_batch) {
@@ -212,49 +233,90 @@ int main(int argc, char** argv) {
     }
     if (!content) { printf("Content failed\n"); return 1; }
     
-    printf("\nInteract with widgets. Press ESC to exit.\n\n");
+    printf("\nInteract with widgets. Press ESC to exit.\n");
+    printf("Event coalescing + Fixed 60 FPS enabled!\n\n");
     
     /* Layout */
     VenomRectF bounds = {0, 0, (VenomF32)w, (VenomF32)h};
     venom_widget_layout(content, bounds);
     
-    /* Event loop with continuous animation for Batch 2 (Spinner) */
+    /* Optimized event loop */
     VenomBool running = VENOM_TRUE;
-    VenomBool redraw = VENOM_TRUE;
-    VenomBool continuous_animation = (current_batch == 2);  /* Batch 2 has Spinner */
+    VenomBool needs_redraw = VENOM_TRUE;
+    VenomBool continuous_animation = (current_batch == 2);  /* Spinner in Batch 2 */
+    
+    /* FPS Counter */
+    VenomU64 fps_last_time = get_time_us();
+    VenomU32 fps_frame_count = 0;
+    VenomF32 current_fps = 60.0f;
     
     while (running) {
-        /* Always redraw for continuous animation (Spinner), otherwise only on demand */
-        if (redraw || continuous_animation) {
+        VenomU64 frame_start = get_time_us();
+        
+        /* Calculate FPS every second */
+        fps_frame_count++;
+        VenomU64 fps_elapsed = frame_start - fps_last_time;
+        if (fps_elapsed >= 1000000) {  /* 1 second */
+            current_fps = (VenomF32)fps_frame_count * 1000000.0f / (VenomF32)fps_elapsed;
+            printf("\r FPS: %.1f    ", current_fps);
+            fflush(stdout);
+            fps_frame_count = 0;
+            fps_last_time = frame_start;
+        }
+        
+        /* 1. Drain ALL pending events into queue */
+        VenomEvent raw_event;
+        while (venom_display_poll_event(display, &raw_event)) {
+            /* Handle close/escape immediately */
+            if (raw_event.type == VENOM_EVENT_WINDOW_CLOSE) {
+                running = VENOM_FALSE;
+            } else if (raw_event.type == VENOM_EVENT_KEY_DOWN && 
+                       raw_event.key.key == VENOM_KEY_ESCAPE) {
+                running = VENOM_FALSE;
+            } else if (raw_event.type == VENOM_EVENT_WINDOW_EXPOSE) {
+                needs_redraw = VENOM_TRUE;
+            } else {
+                /* Push to queue (auto-coalesces MOUSE_MOVE/SCROLL) */
+                venom_event_queue_push(event_queue, &raw_event);
+            }
+        }
+        
+        /* 2. Flush coalesced events (MOUSE_MOVE, SCROLL) */
+        venom_event_queue_flush_coalesced(event_queue);
+        
+        /* 3. Process all queued events */
+        VenomEvent ev;
+        while (venom_event_queue_pop(event_queue, &ev)) {
+            if (venom_widget_dispatch_event(content, &ev)) {
+                needs_redraw = VENOM_TRUE;
+            }
+        }
+        
+        /* 4. Render frame if needed or continuous animation */
+        if (needs_redraw || continuous_animation) {
             venom_canvas_clear(canvas, venom_color_rgb(240,240,245));
             venom_widget_draw(content, canvas);
+            
+            /* Draw FPS on screen */
+            char fps_text[32];
+            snprintf(fps_text, sizeof(fps_text), "FPS: %.1f", current_fps);
+            VenomPaint fps_paint = venom_paint_fill((VenomColor){100, 100, 100, 255});
+            venom_canvas_draw_text(canvas, fps_text, 10, 20, NULL, &fps_paint);
+            
             venom_canvas_flush(canvas);
-            redraw = VENOM_FALSE;
+            needs_redraw = VENOM_FALSE;
         }
         
-        VenomEvent ev;
-        if (venom_display_poll_event(display, &ev)) {
-            switch (ev.type) {
-                case VENOM_EVENT_WINDOW_CLOSE:
-                    running = VENOM_FALSE;
-                    break;
-                case VENOM_EVENT_KEY_DOWN:
-                    if (ev.key.key == VENOM_KEY_ESCAPE) running = VENOM_FALSE;
-                    break;
-                case VENOM_EVENT_WINDOW_EXPOSE:
-                    redraw = VENOM_TRUE;
-                    break;
-                default:
-                    break;
-            }
-            if (venom_widget_dispatch_event(content, &ev)) redraw = VENOM_TRUE;
+        /* 5. Frame limiting to 60 FPS */
+        VenomU64 frame_end = get_time_us();
+        VenomU64 elapsed = frame_end - frame_start;
+        if (elapsed < FRAME_TIME_US) {
+            usleep((useconds_t)(FRAME_TIME_US - elapsed));
         }
-        
-        /* Frame limiting: 60 FPS */
-        usleep(16667);
     }
     
     printf("\nCleaning up...\n");
+    venom_event_queue_destroy(event_queue);
     venom_unref(content);
     venom_unref(canvas);
     venom_display_close(display);

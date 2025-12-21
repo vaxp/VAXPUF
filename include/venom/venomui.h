@@ -14,10 +14,14 @@
 #include "venom/core/venom_ref.h"
 #include "venom/core/venom_focus.h"
 #include "venom/core/venom_theme.h"
+#include "venom/core/venom_animation.h"
+#include "venom/core/venom_animation_group.h"
+#include "venom/core/venom_spring_animation.h"
 
 /* Backend */
 #include "venom/backend/venom_display.h"
 #include "venom/backend/venom_event.h"
+#include "venom/backend/venom_event_queue.h"
 #include "venom/backend/venom_window.h"
 #include "venom/backend/venom_surface.h"
 

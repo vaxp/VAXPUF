@@ -40,7 +40,7 @@ static void spinner_init(VenomWidget* widget) {
     
     /* Animation state */
     spinner->start_time = get_time_seconds();
-    spinner->animation_duration = 1.4f;  /* Full cycle in seconds */
+    spinner->animation_duration = 2.8f;  /* Full cycle in seconds (slower - 30 FPS feel) */
     spinner->arc_min = 0.08f;  /* Minimum arc length (fraction of circle) */
     spinner->arc_max = 0.75f;  /* Maximum arc length */
 }
@@ -64,27 +64,18 @@ static void spinner_draw(VenomWidget* widget, VenomCanvas* canvas) {
     /* Auto-animate: Calculate current animation state based on time */
     VenomF64 now = get_time_seconds();
     VenomF64 elapsed = now - spinner->start_time;
-    VenomF32 cycle = fmodf((VenomF32)elapsed / spinner->animation_duration, 1.0f);
     
-    /* Phase 1 (0-0.5): Arc grows while rotating
-     * Phase 2 (0.5-1): Arc shrinks while rotating faster */
-    VenomF32 arc_length, rotation_offset;
+    /* Simple continuous rotation (one full rotation per animation_duration) */
+    VenomF32 rotation = fmodf((VenomF32)(elapsed / spinner->animation_duration) * TWO_PI, TWO_PI);
     
-    if (cycle < 0.5f) {
-        /* Growing phase */
-        VenomF32 t = ease_in_out_cubic(cycle * 2.0f);
-        arc_length = spinner->arc_min + (spinner->arc_max - spinner->arc_min) * t;
-        rotation_offset = cycle * TWO_PI * 1.5f;
-    } else {
-        /* Shrinking phase */
-        VenomF32 t = ease_in_out_cubic((cycle - 0.5f) * 2.0f);
-        arc_length = spinner->arc_max - (spinner->arc_max - spinner->arc_min) * t;
-        rotation_offset = cycle * TWO_PI * 1.5f + (spinner->arc_max - arc_length) * TWO_PI;
-    }
+    /* Arc length oscillates between min and max using sine wave */
+    VenomF32 oscillation = (sinf((VenomF32)(elapsed * 2.0) + PI) + 1.0f) / 2.0f;  /* 0 to 1 */
+    VenomF32 arc_length = spinner->arc_min + (spinner->arc_max - spinner->arc_min) * oscillation;
     
-    /* Continuous base rotation */
-    VenomF32 base_rotation = (VenomF32)elapsed * TWO_PI * 0.8f;  /* Slow continuous rotation */
-    VenomF32 start_angle = base_rotation + rotation_offset - PI / 2.0f;  /* Start at top */
+    /* Ensure minimum visibility */
+    if (arc_length < 0.1f) arc_length = 0.1f;
+    
+    VenomF32 start_angle = rotation - PI / 2.0f;  /* Start at top */
     VenomF32 arc_angle = arc_length * TWO_PI;
     
     /* Draw track (background circle) */
@@ -96,10 +87,8 @@ static void spinner_draw(VenomWidget* widget, VenomCanvas* canvas) {
     /* Draw animated arc using line segments for smooth curve */
     VenomPaint arc_paint = venom_paint_stroke(spinner->color, spinner->stroke_width);
     
-    /* Higher segment count for smoother arc */
-    int segments = (int)(arc_length * 40.0f);
-    if (segments < 8) segments = 8;
-    if (segments > 60) segments = 60;
+    /* Fixed segment count for consistent rendering */
+    int segments = 30;
     
     for (int i = 0; i < segments; i++) {
         VenomF32 t1 = (VenomF32)i / (VenomF32)segments;

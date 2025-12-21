@@ -243,6 +243,11 @@ static void container_draw(VenomWidget* widget, VenomCanvas* canvas) {
     /* Children are drawn by the widget system after this */
 }
 
+static void container_destroy(VenomWidget* widget) {
+    /* Call base class destroy to free children */
+    venom_widget_class.destroy(widget);
+}
+
 /* ============================================================================
  * CONTAINER CLASS
  * ============================================================================ */
@@ -252,7 +257,7 @@ const VenomWidgetClass venom_container_class = {
     .instance_size = sizeof(VenomContainer),
     .parent_class = &venom_widget_class,
     .init = container_init,
-    .destroy = NULL,  /* Will use parent's at runtime */
+    .destroy = container_destroy,  /* Now properly calls base destroy */
     .measure = container_measure,
     .layout = container_layout,
     .draw = container_draw,

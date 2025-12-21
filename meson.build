@@ -62,12 +62,16 @@ core_sources = files(
     'src/core/venom_app.c',
     'src/core/venom_focus.c',
     'src/core/venom_theme.c',
+    'src/core/venom_animation.c',
+    'src/core/venom_animation_group.c',
+    'src/core/venom_spring_animation.c',
 )
 
 backend_sources = files(
     'src/backend/x11/venom_x11_display.c',
     'src/backend/x11/venom_event.c',
     'src/backend/venom_window.c',
+    'src/backend/venom_event_queue.c',
 )
 
 widget_sources = files(
