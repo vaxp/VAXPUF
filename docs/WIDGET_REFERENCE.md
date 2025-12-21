@@ -1,6 +1,6 @@
 # VENOMUI Widget Documentation
 
-Complete API reference and usage guide for all 45 VENOMUI widgets.
+Complete API reference and usage guide for all 51 VENOMUI widgets.
 
 ---
 
@@ -941,6 +941,162 @@ venom_stepper_next(stepper);         /* Marks current as complete, moves to next
 venom_stepper_prev(stepper);
 venom_stepper_complete_step(stepper, 0);
 venom_stepper_set_error(stepper, 2, VENOM_TRUE);
+```
+
+---
+
+## Advanced Pickers
+
+### VenomPopover
+
+Anchored popup with arrow, multiple placements, and auto-close.
+
+```c
+void on_popover_open(VenomPopover* popover, VenomBool open, void* data) {
+    printf("Popover %s\n", open ? "opened" : "closed");
+}
+
+VenomWidget* popover = venom_popover(
+    .anchor = button_widget,
+    .content = menu_content,
+    .placement = VENOM_POPOVER_BOTTOM,  /* TOP, BOTTOM, LEFT, RIGHT + _START/_END */
+    .trigger = VENOM_POPOVER_TRIGGER_CLICK,  /* CLICK, HOVER, FOCUS, MANUAL */
+    .show_arrow = VENOM_TRUE,
+    .offset = 8.0f
+);
+
+/* API */
+venom_popover_open(popover);
+venom_popover_close(popover);
+venom_popover_toggle(popover);
+VenomBool is_open = venom_popover_is_open(popover);
+```
+
+---
+
+### VenomCalendar
+
+Full calendar widget with month navigation and date selection.
+
+```c
+void on_date_select(VenomCalendar* cal, VenomDate date, void* data) {
+    printf("Selected: %04d-%02d-%02d\n", date.year, date.month, date.day);
+}
+
+VenomWidget* calendar = venom_calendar(
+    .initial_date = venom_date_today(),
+    .on_select = on_date_select
+);
+
+/* API */
+venom_calendar_go_to_today(calendar);
+venom_calendar_prev_month(calendar);
+venom_calendar_next_month(calendar);
+venom_calendar_select_date(calendar, (VenomDate){ 2024, 12, 25 });
+VenomDate selected = venom_calendar_get_selected(calendar);
+```
+
+---
+
+### VenomDatePicker
+
+Date input field with dropdown calendar.
+
+```c
+void on_date_change(VenomDatePicker* picker, VenomDate date, void* data) {
+    printf("Date: %04d-%02d-%02d\n", date.year, date.month, date.day);
+}
+
+VenomWidget* date_picker = venom_date_picker(
+    .initial_date = venom_date_today(),
+    .placeholder = "Select date...",
+    .format = "YYYY-MM-DD",
+    .on_change = on_date_change
+);
+
+/* API */
+venom_date_picker_set_date(picker, (VenomDate){ 2024, 1, 15 });
+VenomDate date = venom_date_picker_get_date(picker);
+venom_date_picker_open(picker);
+venom_date_picker_close(picker);
+```
+
+---
+
+### VenomTimePicker
+
+Time input with hour/minute/second selection.
+
+```c
+void on_time_change(VenomTimePicker* picker, VenomTime time, void* data) {
+    printf("Time: %02d:%02d:%02d\n", time.hour, time.minute, time.second);
+}
+
+VenomWidget* time_picker = venom_time_picker(
+    .initial_time = (VenomTime){ 14, 30, 0 },
+    .use_24h = VENOM_TRUE,
+    .show_seconds = VENOM_FALSE,
+    .on_change = on_time_change
+);
+
+/* API */
+venom_time_picker_set_time(picker, (VenomTime){ 9, 0, 0 });
+VenomTime time = venom_time_picker_get_time(picker);
+venom_time_picker_set_24h(picker, VENOM_FALSE);
+venom_time_picker_set_minute_step(picker, 15);  /* 15-minute intervals */
+```
+
+---
+
+### VenomColorPicker
+
+Full HSV color picker with saturation/value square, hue bar, and alpha slider.
+
+```c
+void on_color_change(VenomColorPicker* picker, VenomColor color, void* data) {
+    printf("Color: #%02X%02X%02X (alpha: %d)\n", 
+           color.r, color.g, color.b, color.a);
+}
+
+VenomWidget* color_picker = venom_color_picker(
+    .initial_color = (VenomColor){ 255, 0, 0, 255 },
+    .mode = VENOM_COLOR_PICKER_HSV,  /* HSV, RGB, PALETTE */
+    .show_alpha = VENOM_TRUE,
+    .on_change = on_color_change
+);
+
+/* API */
+venom_color_picker_set_color(picker, (VenomColor){ 0, 128, 255, 255 });
+VenomColor color = venom_color_picker_get_color(picker);
+venom_color_picker_set_show_alpha(picker, VENOM_FALSE);
+```
+
+---
+
+### VenomFileChooser
+
+File browser with directory navigation, filtering, and selection.
+
+```c
+void on_file_confirm(VenomFileChooser* chooser, const char* path, void* data) {
+    printf("Selected file: %s\n", path);
+}
+
+VenomWidget* file_chooser = venom_file_chooser(
+    .mode = VENOM_FILE_CHOOSER_OPEN,  /* OPEN, SAVE, SELECT_FOLDER, OPEN_MULTIPLE */
+    .initial_path = "/home/user",
+    .filter = "*.txt;*.md",
+    .on_confirm = on_file_confirm
+);
+
+/* API */
+venom_file_chooser_set_path(chooser, "/home/user/documents");
+const char* path = venom_file_chooser_get_path(chooser);
+const char* selected = venom_file_chooser_get_selected(chooser);
+venom_file_chooser_set_filter(chooser, "*.png;*.jpg");
+venom_file_chooser_set_show_hidden(chooser, VENOM_TRUE);
+venom_file_chooser_go_up(chooser);
+venom_file_chooser_refresh(chooser);
 ```
 
 ---

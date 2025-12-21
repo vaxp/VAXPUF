@@ -31,6 +31,12 @@
 | ColorSwatch | `venom_color_swatch(...)` | `venom_color_swatch_create()` |
 | SplitPane | `venom_split_pane(...)` | `venom_split_pane_create()` |
 | TextArea | `venom_text_area(...)` | `venom_text_area_create()` |
+| Popover | `venom_popover(...)` | `venom_popover_create()` |
+| Calendar | `venom_calendar(...)` | `venom_calendar_create()` |
+| DatePicker | `venom_date_picker(...)` | `venom_date_picker_create()` |
+| TimePicker | `venom_time_picker(...)` | `venom_time_picker_create()` |
+| ColorPicker | `venom_color_picker(...)` | `venom_color_picker_create()` |
+| FileChooser | `venom_file_chooser(...)` | `venom_file_chooser_create()` |
 
 ## Layout
 

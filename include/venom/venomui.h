@@ -71,6 +71,12 @@
 #include "venom/widgets/venom_stepper.h"
 #include "venom/widgets/venom_rating.h"
 #include "venom/widgets/venom_link.h"
+#include "venom/widgets/venom_popover.h"
+#include "venom/widgets/venom_calendar.h"
+#include "venom/widgets/venom_date_picker.h"
+#include "venom/widgets/venom_time_picker.h"
+#include "venom/widgets/venom_color_picker.h"
+#include "venom/widgets/venom_file_chooser.h"
 
 /* High-level API */
 #include "venom/venom_app.h"
