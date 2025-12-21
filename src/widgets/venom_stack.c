@@ -73,8 +73,19 @@ static void stack_layout(VenomWidget* widget, VenomRectF bounds) {
         VenomWidget* child = stack->children[i];
         if (!child || !child->visible) continue;
         
+        /* If child has pre-set bounds (width > 0 and height > 0), use them */
+        if (child->bounds.width > 0 && child->bounds.height > 0) {
+            /* Just call layout with existing bounds to let child initialize */
+            venom_widget_layout(child, child->bounds);
+            continue;
+        }
+        
         VenomF32 child_w, child_h;
         venom_widget_measure(child, bounds.width, bounds.height, &child_w, &child_h);
+        
+        /* Use preferred size if set */
+        if (child->layout.preferred_width > 0) child_w = child->layout.preferred_width;
+        if (child->layout.preferred_height > 0) child_h = child->layout.preferred_height;
         
         /* Calculate position based on alignment */
         VenomF32 x = 0, y = 0;
@@ -115,6 +126,10 @@ static void stack_layout(VenomWidget* widget, VenomRectF bounds) {
                 break;
         }
         
+        /* Apply margins */
+        x += child->layout.margin.left;
+        y += child->layout.margin.top;
+        
         VenomRectF child_bounds = { x, y, child_w, child_h };
         venom_widget_layout(child, child_bounds);
     }
@@ -123,10 +138,16 @@ static void stack_layout(VenomWidget* widget, VenomRectF bounds) {
 static void stack_draw(VenomWidget* widget, VenomCanvas* canvas) {
     VenomStack* stack = (VenomStack*)widget;
     
+    printf("[Stack] Drawing %u children\n", stack->child_count);
+    
     /* Draw children in order (first added = bottom, last = top) */
     for (VenomU32 i = 0; i < stack->child_count; i++) {
         VenomWidget* child = stack->children[i];
         if (child && child->visible) {
+            printf("  [%u] %s at (%.0f, %.0f) size %.0fx%.0f\n", 
+                   i, child->klass->class_name,
+                   child->bounds.x, child->bounds.y,
+                   child->bounds.width, child->bounds.height);
             venom_canvas_save(canvas);
             venom_canvas_translate(canvas, child->bounds.x, child->bounds.y);
             venom_widget_draw(child, canvas);

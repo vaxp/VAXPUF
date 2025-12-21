@@ -122,32 +122,32 @@ static void carousel_layout(VenomWidget* widget, VenomRectF bounds) {
  * ============================================================================ */
 
 static void carousel_draw(VenomWidget* widget, VenomCanvas* canvas) {
-    VenomCarousel* c = (VenomCarousel*)widget;
-    VenomRectF bounds = widget->bounds;
+    VenomCarousel* carousel = (VenomCarousel*)widget;
+    VenomRectF bounds = { 0, 0, widget->bounds.width, widget->bounds.height };
     
-    if (c->item_count == 0) return;
+    if (carousel->item_count == 0) return;
     
     /* Auto-play */
-    if (c->auto_play && !c->is_dragging) {
+    if (carousel->auto_play && !carousel->is_dragging) {
         VenomF64 now = get_current_time_ms();
-        if (now - c->last_slide_time >= c->interval_ms) {
-            venom_carousel_next(c);
-            c->last_slide_time = now;
+        if (now - carousel->last_slide_time >= carousel->interval_ms) {
+            venom_carousel_next(carousel);
+            carousel->last_slide_time = now;
         }
         widget->needs_redraw = VENOM_TRUE;
     }
     
     /* Animate slide */
-    c->target_offset = -c->current_index * bounds.width;
-    c->offset_x += (c->target_offset - c->offset_x) * 0.15f;
+    carousel->target_offset = -carousel->current_index * bounds.width;
+    carousel->offset_x += (carousel->target_offset - carousel->offset_x) * 0.15f;
     
     /* Draw visible items */
-    for (VenomI32 i = -1; i <= (VenomI32)c->item_count; i++) {
+    for (VenomI32 i = -1; i <= (VenomI32)carousel->item_count; i++) {
         VenomI32 idx = i;
-        if (idx < 0) idx = c->item_count - 1;
-        if (idx >= (VenomI32)c->item_count) idx = 0;
+        if (idx < 0) idx = carousel->item_count - 1;
+        if (idx >= (VenomI32)carousel->item_count) idx = 0;
         
-        VenomF32 item_x = bounds.x + c->offset_x + i * bounds.width;
+        VenomF32 item_x = bounds.x + carousel->offset_x + i * bounds.width;
         
         /* Skip if not visible */
         if (item_x + bounds.width < bounds.x || item_x > bounds.x + bounds.width) {
@@ -157,22 +157,42 @@ static void carousel_draw(VenomWidget* widget, VenomCanvas* canvas) {
         /* Save and translate */
         VenomRectF item_area = {item_x, bounds.y, bounds.width, bounds.height - 40};
         
-        /* Clip and draw */
-        if (idx >= 0 && idx < (VenomI32)c->item_count) {
-            venom_widget_draw(c->items[idx], canvas);
+        /* Clip and draw (manual clip not needed if we rely on widget system, but here we draw manually) */
+        /* Translation handles position, just draw item */
+        /* Actually items are widgets, we need to manually draw them at offset position? */
+        /* Normally widgets draw at their bounds. We need to force draw at new position */
+        /* But venom_widget_draw translates by child->bounds. */
+        /* We should temporarily move child */
+        
+        /* simplified: assumes child fills area */
+        /* Wait, venom_widget_draw translates by child->bounds.x/y. */
+        /* We want to draw at item_x. */
+        /* Let's manually translate canvas and call child->draw directly? No, messy. */
+        
+        /* For now, just fix the compilation error using `carousel` variable */
+        
+        /* But wait, `c` was used below too */
+        if (idx >= 0 && idx < (VenomI32)carousel->item_count) {
+             /* Drawing child widgets in a carousel is complex because of offsets. */
+             /* We need to cheat: modify child pos, draw, restore */
+             VenomWidget* child = carousel->items[idx];
+             VenomF32 old_x = child->bounds.x;
+             child->bounds.x = item_x; 
+             venom_widget_draw(child, canvas);
+             child->bounds.x = old_x;
         }
     }
     
     /* Draw indicators */
-    if (c->indicator_style == VENOM_CAROUSEL_DOTS && c->item_count > 1) {
-        VenomF32 total_width = c->item_count * CAROUSEL_DOT_SIZE + 
-                               (c->item_count - 1) * CAROUSEL_DOT_GAP;
+    if (carousel->indicator_style == VENOM_CAROUSEL_DOTS && carousel->item_count > 1) {
+        VenomF32 total_width = carousel->item_count * CAROUSEL_DOT_SIZE + 
+                               (carousel->item_count - 1) * CAROUSEL_DOT_GAP;
         VenomF32 start_x = bounds.x + (bounds.width - total_width) / 2.0f;
         VenomF32 dot_y = bounds.y + bounds.height - CAROUSEL_INDICATOR_MARGIN;
         
-        for (VenomU32 i = 0; i < c->item_count; i++) {
-            VenomBool is_current = ((VenomI32)i == c->current_index);
-            VenomColor dot_color = is_current ? c->indicator_active : c->indicator_inactive;
+        for (VenomU32 i = 0; i < carousel->item_count; i++) {
+            VenomBool is_current = ((VenomI32)i == carousel->current_index);
+            VenomColor dot_color = is_current ? carousel->indicator_active : carousel->indicator_inactive;
             VenomF32 radius = is_current ? CAROUSEL_DOT_SIZE / 2 + 1 : CAROUSEL_DOT_SIZE / 2;
             
             VenomPaint dp = venom_paint_fill(dot_color);
@@ -180,17 +200,17 @@ static void carousel_draw(VenomWidget* widget, VenomCanvas* canvas) {
                 start_x + i * (CAROUSEL_DOT_SIZE + CAROUSEL_DOT_GAP) + CAROUSEL_DOT_SIZE / 2,
                 dot_y, radius, &dp);
         }
-    } else if (c->indicator_style == VENOM_CAROUSEL_NUMBERS && c->item_count > 1) {
+    } else if (carousel->indicator_style == VENOM_CAROUSEL_NUMBERS && carousel->item_count > 1) {
         char num_str[16];
-        snprintf(num_str, sizeof(num_str), "%d / %u", c->current_index + 1, c->item_count);
+        snprintf(num_str, sizeof(num_str), "%d / %u", carousel->current_index + 1, carousel->item_count);
         
         VenomF32 text_y = bounds.y + bounds.height - CAROUSEL_INDICATOR_MARGIN + 5;
-        VenomPaint tp = venom_paint_fill(c->indicator_active);
+        VenomPaint tp = venom_paint_fill(carousel->indicator_active);
         venom_canvas_draw_text(canvas, num_str, bounds.x + bounds.width / 2, text_y, NULL, &tp);
     }
     
     /* Draw arrows */
-    if (c->show_arrows && c->item_count > 1) {
+    if (carousel->show_arrows && carousel->item_count > 1) {
         VenomF32 arrow_y = bounds.y + (bounds.height - 40) / 2;
         VenomColor arrow_bg = venom_color_rgba(0, 0, 0, 80);
         VenomPaint abp = venom_paint_fill(arrow_bg);
@@ -219,7 +239,7 @@ static void carousel_draw(VenomWidget* widget, VenomCanvas* canvas) {
     }
     
     /* Request redraw for animation */
-    if (c->offset_x != c->target_offset || c->auto_play) {
+    if (carousel->offset_x != carousel->target_offset || carousel->auto_play) {
         widget->needs_redraw = VENOM_TRUE;
     }
 }

@@ -145,7 +145,7 @@ static void table_layout(VenomWidget* widget, VenomRectF bounds) {
 
 static void table_draw(VenomWidget* widget, VenomCanvas* canvas) {
     VenomTable* table = (VenomTable*)widget;
-    VenomRectF bounds = widget->bounds;
+    VenomRectF bounds = { 0, 0, widget->bounds.width, widget->bounds.height };
     
     if (table->column_count == 0) return;
     

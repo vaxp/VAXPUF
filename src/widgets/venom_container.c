@@ -102,6 +102,13 @@ static void container_layout(VenomWidget* widget, VenomRectF bounds) {
         
         venom_widget_measure(child, content.width, content.height, &widths[i], &heights[i]);
         
+        /* If child has flex_grow, don't count its measured size in total_main */
+        /* It will get space from free_space distribution */
+        if (child->layout.flex_grow > 0) {
+            if (is_row) widths[i] = 0;  /* Will be filled by flex */
+            else heights[i] = 0;
+        }
+        
         total_main += is_row ? widths[i] : heights[i];
         total_flex_grow += child->layout.flex_grow;
         visible_count++;
@@ -112,21 +119,22 @@ static void container_layout(VenomWidget* widget, VenomRectF bounds) {
     VenomF32 gap_space = visible_count > 1 ? c->gap * (visible_count - 1) : 0;
     VenomF32 free_space = main_size - total_main - gap_space;
     
-    /* Distribute extra space if flex_grow is used */
-    if (free_space > 0 && total_flex_grow > 0) {
+    /* Distribute remaining space to flex_grow widgets */
+    if (total_flex_grow > 0 && free_space > 0) {
         VenomF32 per_grow = free_space / total_flex_grow;
         for (VenomU32 i = 0; i < child_count; i++) {
             VenomWidget* child = venom_widget_child_at(widget, i);
             if (!child->visible) continue;
             
-            VenomF32 extra = per_grow * child->layout.flex_grow;
-            if (is_row) {
-                widths[i] += extra;
-            } else {
-                heights[i] += extra;
+            if (child->layout.flex_grow > 0) {
+                VenomF32 size = per_grow * child->layout.flex_grow;
+                if (is_row) {
+                    widths[i] = size;
+                } else {
+                    heights[i] = size;
+                }
             }
         }
-        free_space = 0;
     }
     
     /* Calculate starting position based on justify */
@@ -219,6 +227,8 @@ static void container_layout(VenomWidget* widget, VenomRectF bounds) {
         y -= bounds.y;
         
         VenomRectF child_bounds = { x, y, w, h };
+        printf("[Container Layout] Child %u: (%s) at (%.0f,%.0f) size %.0fx%.0f\n", 
+               idx, child->klass ? child->klass->class_name : "?", x, y, w, h);
         venom_widget_layout(child, child_bounds);
     }
     

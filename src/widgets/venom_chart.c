@@ -307,9 +307,9 @@ static void draw_pie_chart(VenomChart* chart, VenomCanvas* canvas, VenomRectF ar
 
 static void chart_draw(VenomWidget* widget, VenomCanvas* canvas) {
     VenomChart* chart = (VenomChart*)widget;
-    VenomRectF bounds = widget->bounds;
+    VenomRectF bounds = { 0, 0, widget->bounds.width, widget->bounds.height };
     
-    /* Animate */
+    /* Background */
     if (chart->animate && chart->anim_progress < 1.0f) {
         chart->anim_progress += 0.03f;
         if (chart->anim_progress > 1.0f) chart->anim_progress = 1.0f;
@@ -345,7 +345,6 @@ static void chart_draw(VenomWidget* widget, VenomCanvas* canvas) {
     
     /* Draw grid (line/bar/area only) */
     if (chart->show_grid && chart->type != VENOM_CHART_PIE && chart->type != VENOM_CHART_DONUT) {
-        VenomPaint gp = venom_paint_fill(chart->grid_color);
         
         /* Horizontal lines */
         VenomPaint grid_stroke = venom_paint_stroke(chart->grid_color, 1);

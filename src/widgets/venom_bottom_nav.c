@@ -102,7 +102,7 @@ static void bottom_nav_layout(VenomWidget* widget, VenomRectF bounds) {
 
 static void bottom_nav_draw(VenomWidget* widget, VenomCanvas* canvas) {
     VenomBottomNav* nav = (VenomBottomNav*)widget;
-    VenomRectF bounds = widget->bounds;
+    VenomRectF bounds = { 0, 0, widget->bounds.width, widget->bounds.height };
     
     if (nav->item_count == 0) return;
     

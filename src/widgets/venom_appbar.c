@@ -156,7 +156,7 @@ static void appbar_layout(VenomWidget* widget, VenomRectF bounds) {
 
 static void appbar_draw(VenomWidget* widget, VenomCanvas* canvas) {
     VenomAppBar* bar = (VenomAppBar*)widget;
-    VenomRectF bounds = widget->bounds;
+    VenomRectF bounds = { 0, 0, widget->bounds.width, widget->bounds.height };
     
     /* Draw shadow (if elevated) */
     if (bar->elevation > 0) {
