@@ -38,6 +38,9 @@ thread_dep = dependency('threads')
 # libpng for image loading
 png_dep = dependency('libpng', required: true)
 
+# Math library (for sinf, cosf, etc.)
+m_dep = meson.get_compiler('c').find_library('m', required: false)
+
 # Compiler flags
 c_args = []
 cpp_args = []
@@ -90,6 +93,25 @@ widget_sources = files(
     'src/widgets/venom_list_view.c',
     'src/widgets/venom_dialog.c',
     'src/widgets/venom_context_menu.c',
+    'src/widgets/venom_text_area.c',
+    'src/widgets/venom_dropdown.c',
+    'src/widgets/venom_tabs.c',
+    'src/widgets/venom_card.c',
+    'src/widgets/venom_notification.c',
+    'src/widgets/venom_grid_view.c',
+    'src/widgets/venom_avatar.c',
+    'src/widgets/venom_icon.c',
+    'src/widgets/venom_accordion.c',
+    'src/widgets/venom_snackbar.c',
+    'src/widgets/venom_chip.c',
+    'src/widgets/venom_spinner.c',
+    'src/widgets/venom_split_pane.c',
+    'src/widgets/venom_tree_view.c',
+    'src/widgets/venom_breadcrumb.c',
+    'src/widgets/venom_search_bar.c',
+    'src/widgets/venom_number_input.c',
+    'src/widgets/venom_color_swatch.c',
+    'src/widgets/venom_toggle_button.c',
 )
 
 state_sources = files(
@@ -119,7 +141,7 @@ all_sources = [
 venomui_lib = library('venomui',
     all_sources,
     include_directories: inc_dirs,
-    dependencies: [x11_dep, graphics_dep, pangocairo_dep, png_dep, thread_dep],
+    dependencies: [x11_dep, graphics_dep, pangocairo_dep, png_dep, thread_dep, m_dep],
     c_args: c_args,
     cpp_args: cpp_args,
     install: true,
