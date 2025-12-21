@@ -75,6 +75,21 @@ widget_sources = files(
     'src/widgets/venom_text_input.c',
     'src/widgets/venom_scrollable.c',
     'src/widgets/venom_image.c',
+    'src/widgets/venom_stack.c',
+    'src/widgets/venom_spacer.c',
+    'src/widgets/venom_divider.c',
+    'src/widgets/venom_sized_box.c',
+    'src/widgets/venom_padding.c',
+    'src/widgets/venom_checkbox.c',
+    'src/widgets/venom_switch.c',
+    'src/widgets/venom_slider.c',
+    'src/widgets/venom_progress.c',
+    'src/widgets/venom_radio.c',
+    'src/widgets/venom_tooltip.c',
+    'src/widgets/venom_badge.c',
+    'src/widgets/venom_list_view.c',
+    'src/widgets/venom_dialog.c',
+    'src/widgets/venom_context_menu.c',
 )
 
 state_sources = files(
