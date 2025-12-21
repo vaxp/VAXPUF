@@ -39,3 +39,8 @@ const_demo_exe = executable('const_demo',
     'const_demo.c',
     dependencies: venomui_dep,
 )
+
+new_widgets_demo_exe = executable('new_widgets_demo',
+    'new_widgets_demo.c',
+    dependencies: venomui_dep,
+)

@@ -81,6 +81,12 @@
 #include "venom/widgets/venom_time_picker.h"
 #include "venom/widgets/venom_color_picker.h"
 #include "venom/widgets/venom_file_chooser.h"
+#include "venom/widgets/venom_appbar.h"
+#include "venom/widgets/venom_bottom_nav.h"
+#include "venom/widgets/venom_drawer.h"
+#include "venom/widgets/venom_carousel.h"
+#include "venom/widgets/venom_table.h"
+#include "venom/widgets/venom_chart.h"
 
 /* High-level API */
 #include "venom/venom_app.h"
