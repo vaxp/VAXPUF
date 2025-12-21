@@ -25,6 +25,10 @@ typedef struct VenomX11Display {
     int default_screen;
     Window root_window;
     
+    /* XIM - X Input Method for international text input */
+    XIM xim;                    /* Input method handle */
+    XIMStyles* xim_styles;      /* Supported input styles */
+    
     /* Atoms for protocols */
     Atom wm_delete_window;
     Atom wm_protocols;
@@ -35,6 +39,7 @@ typedef struct VenomX11Display {
     struct {
         Window xwindow;
         VenomU32 id;
+        XIC xic;                /* Input context per window */
     } windows[64];
     VenomU32 window_count;
     VenomU32 next_window_id;
@@ -224,20 +229,45 @@ static VenomBool x11_translate_event(VenomX11Display* d, XEvent* xevent, VenomEv
             
         case KeyPress:
         case KeyRelease: {
-            KeySym keysym;
-            char buf[32];
-            int len = XLookupString(&xevent->xkey, buf, sizeof(buf) - 1, &keysym, NULL);
+            KeySym keysym = NoSymbol;
+            Status status = 0;
+            char buf[64];  /* UTF-8 can be up to 4 bytes per char */
+            int len = 0;
+            
+            /* Find XIC for this window */
+            XIC xic = NULL;
+            VenomU32 win_id = x11_find_window_id(d, xevent->xkey.window);
+            for (VenomU32 i = 0; i < d->window_count; i++) {
+                if (d->windows[i].id == win_id) {
+                    xic = d->windows[i].xic;
+                    break;
+                }
+            }
+            
+            /* Use Xutf8LookupString if XIC available for proper UTF-8 */
+            if (xic && xevent->type == KeyPress) {
+                len = Xutf8LookupString(xic, &xevent->xkey, buf, sizeof(buf) - 1, 
+                                         &keysym, &status);
+                if (status == XBufferOverflow) {
+                    len = 0;  /* Buffer too small */
+                }
+            } else {
+                /* Fallback to XLookupString */
+                len = XLookupString(&xevent->xkey, buf, sizeof(buf) - 1, &keysym, NULL);
+            }
+            buf[len < 63 ? len : 63] = '\0';
             
             out->type = (xevent->type == KeyPress) ? VENOM_EVENT_KEY_DOWN : VENOM_EVENT_KEY_UP;
-            out->key.window_id = x11_find_window_id(d, xevent->xkey.window);
+            out->key.window_id = win_id;
             out->key.key = x11_translate_keysym(keysym);
             out->key.scancode = xevent->xkey.keycode;
             out->key.modifiers = x11_translate_modifiers(xevent->xkey.state);
-            out->key.is_repeat = VENOM_FALSE;  /* TODO: detect repeats */
+            out->key.is_repeat = VENOM_FALSE;
             
-            /* Also generate text input for key press with printable chars */
-            if (xevent->type == KeyPress && len > 0 && buf[0] >= 32) {
-                /* We'll save this for a separate text event */
+            /* Store UTF-8 text in event for TEXT_INPUT handling */
+            if (xevent->type == KeyPress && len > 0 && (unsigned char)buf[0] >= 32) {
+                memcpy(out->text.text, buf, len < 31 ? len + 1 : 31);
+                out->text.text[31] = '\0';
             }
             return VENOM_TRUE;
         }
@@ -384,6 +414,17 @@ static VenomResultPtr x11_create_window(VenomDisplay* display, const char* title
     VenomU32 id = ++d->next_window_id;
     d->windows[d->window_count].xwindow = xwindow;
     d->windows[d->window_count].id = id;
+    
+    /* Create XIC (Input Context) for this window if XIM is available */
+    if (d->xim) {
+        d->windows[d->window_count].xic = XCreateIC(d->xim,
+            XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
+            XNClientWindow, xwindow,
+            XNFocusWindow, xwindow,
+            NULL);
+    } else {
+        d->windows[d->window_count].xic = NULL;
+    }
     d->window_count++;
     
     /* Map (show) the window */
@@ -429,6 +470,20 @@ VenomResultPtr venom_display_open(VenomBackendType backend, const char* display_
     d->wm_protocols = XInternAtom(xdisplay, "WM_PROTOCOLS", False);
     d->net_wm_name = XInternAtom(xdisplay, "_NET_WM_NAME", False);
     d->utf8_string = XInternAtom(xdisplay, "UTF8_STRING", False);
+    
+    /* Initialize XIM for international text input */
+    if (XSetLocaleModifiers("") == NULL) {
+        XSetLocaleModifiers("@im=none");  /* Fallback */
+    }
+    
+    d->xim = XOpenIM(xdisplay, NULL, NULL, NULL);
+    if (d->xim) {
+        /* Get supported input styles */
+        XGetIMValues(d->xim, XNQueryInputStyle, &d->xim_styles, NULL);
+    } else {
+        /* XIM not available - will fallback to XLookupString */
+        d->xim_styles = NULL;
+    }
     
     d->window_count = 0;
     d->next_window_id = 0;

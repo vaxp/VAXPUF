@@ -12,10 +12,13 @@
 #include "venom/core/venom_memory.h"
 #include "venom/core/venom_result.h"
 #include "venom/core/venom_ref.h"
+#include "venom/core/venom_focus.h"
+#include "venom/core/venom_theme.h"
 
 /* Backend */
 #include "venom/backend/venom_display.h"
 #include "venom/backend/venom_event.h"
+#include "venom/backend/venom_window.h"
 #include "venom/backend/venom_surface.h"
 
 /* Graphics */
@@ -26,6 +29,9 @@
 #include "venom/widgets/venom_button.h"
 #include "venom/widgets/venom_label.h"
 #include "venom/widgets/venom_container.h"
+#include "venom/widgets/venom_text_input.h"
+#include "venom/widgets/venom_scrollable.h"
+#include "venom/widgets/venom_image.h"
 
 /* High-level API */
 #include "venom/venom_app.h"

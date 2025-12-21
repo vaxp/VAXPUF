@@ -25,12 +25,18 @@ skia_dep = dependency('skia', required: false)
 # Fallback to Cairo if Skia not available
 cairo_dep = dependency('cairo', required: false)
 
+# PangoCairo for proper international text rendering (Arabic, CJK, etc.)
+pangocairo_dep = dependency('pangocairo', required: true)
+
 if not skia_dep.found() and not cairo_dep.found()
     error('Either Skia or Cairo is required for rendering')
 endif
 
 # Thread support for atomic operations
 thread_dep = dependency('threads')
+
+# libpng for image loading
+png_dep = dependency('libpng', required: true)
 
 # Compiler flags
 c_args = []
@@ -51,11 +57,14 @@ core_sources = files(
     'src/core/venom_result.c',
     'src/core/venom_init.c',
     'src/core/venom_app.c',
+    'src/core/venom_focus.c',
+    'src/core/venom_theme.c',
 )
 
 backend_sources = files(
     'src/backend/x11/venom_x11_display.c',
     'src/backend/x11/venom_event.c',
+    'src/backend/venom_window.c',
 )
 
 widget_sources = files(
@@ -63,6 +72,9 @@ widget_sources = files(
     'src/widgets/venom_button.c',
     'src/widgets/venom_label.c',
     'src/widgets/venom_container.c',
+    'src/widgets/venom_text_input.c',
+    'src/widgets/venom_scrollable.c',
+    'src/widgets/venom_image.c',
 )
 
 state_sources = files(
@@ -92,7 +104,7 @@ all_sources = [
 venomui_lib = library('venomui',
     all_sources,
     include_directories: inc_dirs,
-    dependencies: [x11_dep, graphics_dep, thread_dep],
+    dependencies: [x11_dep, graphics_dep, pangocairo_dep, png_dep, thread_dep],
     c_args: c_args,
     cpp_args: cpp_args,
     install: true,

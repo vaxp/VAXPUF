@@ -19,6 +19,7 @@
 
 #include <cairo/cairo.h>
 #include <cairo/cairo-xlib.h>
+#include <pango/pangocairo.h>
 #include <string.h>
 
 /* ============================================================================
@@ -223,13 +224,35 @@ static void cairo_canvas_draw_path(VenomCanvas* canvas, const VenomPath* path, c
 static void cairo_canvas_draw_text(VenomCanvas* canvas, const char* text, VenomF32 x, VenomF32 y,
                                     const VenomFont* font, const VenomPaint* paint) {
     VenomCairoCanvas* c = (VenomCairoCanvas*)canvas;
-    (void)font;  /* TODO: font support */
+    (void)font;  /* TODO: custom font support */
+    
+    if (!text || text[0] == '\0') return;
     
     apply_paint(c->cr, paint);
-    cairo_select_font_face(c->cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_font_size(c->cr, 14.0);  /* Default size */
-    cairo_move_to(c->cr, x, y);
-    cairo_show_text(c->cr, text);
+    
+    /* Use Pango for proper international text rendering (Arabic, CJK, etc.) */
+    PangoLayout* layout = pango_cairo_create_layout(c->cr);
+    
+    /* Set font - use "Noto Sans" which has good Unicode coverage, fallback to Sans */
+    PangoFontDescription* desc = pango_font_description_from_string("Noto Sans 14");
+    pango_layout_set_font_description(layout, desc);
+    pango_font_description_free(desc);
+    
+    /* Set text - Pango handles UTF-8 and RTL automatically */
+    pango_layout_set_text(layout, text, -1);
+    
+    /* Get text dimensions for baseline positioning */
+    PangoRectangle logical_rect;
+    pango_layout_get_pixel_extents(layout, NULL, &logical_rect);
+    
+    /* Position - adjust for baseline (Cairo y is baseline, Pango uses top) */
+    VenomF32 adjusted_y = y - logical_rect.height * 0.7f;  /* Approximate baseline */
+    cairo_move_to(c->cr, x, adjusted_y);
+    
+    /* Render with Pango - this handles text shaping (Arabic joining) automatically */
+    pango_cairo_show_layout(c->cr, layout);
+    
+    g_object_unref(layout);
 }
 
 static void cairo_canvas_draw_image(VenomCanvas* canvas, const VenomImage* image, VenomF32 x, VenomF32 y) {

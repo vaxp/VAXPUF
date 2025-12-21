@@ -286,8 +286,13 @@ int venom_run_app(const VenomAppConfig* config) {
     VenomRectF bounds = { 0, 0, (VenomF32)width, (VenomF32)height };
     venom_widget_layout(g_app.root, bounds);
     
+    /* Initialize focus system for keyboard navigation */
+    venom_focus_init();
+    venom_focus_set_root(g_app.root);
+    
     if (config->debug) {
         printf("VENOMUI: Entering event loop\n");
+        printf("VENOMUI: Use Tab to navigate, Enter/Space to activate buttons\n");
     }
     
     /* Event loop */
@@ -325,6 +330,26 @@ int venom_run_app(const VenomAppConfig* config) {
                 case VENOM_EVENT_KEY_DOWN:
                     if (event.key.key == VENOM_KEY_ESCAPE) {
                         g_app.running = VENOM_FALSE;
+                    } else if (event.key.key == VENOM_KEY_TAB) {
+                        /* Tab navigation between buttons */
+                        if (event.key.modifiers & VENOM_KEYMOD_SHIFT) {
+                            venom_focus_prev();
+                        } else {
+                            venom_focus_next();
+                        }
+                        needs_redraw = VENOM_TRUE;
+                    } else if (event.key.key == VENOM_KEY_RETURN || 
+                               event.key.key == VENOM_KEY_SPACE) {
+                        /* Enter/Space activates focused widget */
+                        VenomWidget* focused = venom_focus_get();
+                        if (focused) {
+                            VenomEvent click = { .type = VENOM_EVENT_MOUSE_BUTTON_DOWN };
+                            click.mouse.button = VENOM_MOUSE_BUTTON_LEFT;
+                            venom_widget_dispatch_event(focused, &click);
+                            click.type = VENOM_EVENT_MOUSE_BUTTON_UP;
+                            venom_widget_dispatch_event(focused, &click);
+                            needs_redraw = VENOM_TRUE;
+                        }
                     }
                     break;
                     

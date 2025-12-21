@@ -136,6 +136,9 @@ struct VenomWidget {
     /* Layout */
     VenomLayoutProps layout;
     
+    /* Focus */
+    VenomBool focusable;    /* Can receive keyboard focus */
+    
     /* User data */
     void* user_data;
 };

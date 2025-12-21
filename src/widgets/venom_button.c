@@ -36,6 +36,9 @@ static void button_init(VenomWidget* widget) {
     widget->layout.padding = (VenomInsets){ 8, 16, 8, 16 };
     widget->layout.min_width = 60.0f;
     widget->layout.min_height = 32.0f;
+    
+    /* Buttons are focusable by default */
+    widget->focusable = VENOM_TRUE;
 }
 
 static void button_destroy(VenomWidget* widget) {
@@ -90,6 +93,14 @@ static void button_draw(VenomWidget* widget, VenomCanvas* canvas) {
         /* Desaturate for disabled */
         VenomU8 gray = (bg.r + bg.g + bg.b) / 3;
         bg = venom_color_rgba(gray, gray, gray, 160);
+    }
+    
+    /* Draw focus ring if focused */
+    if (venom_widget_has_state(widget, VENOM_WIDGET_STATE_FOCUSED)) {
+        VenomRectF focus_rect = { -2, -2, widget->bounds.width + 4, widget->bounds.height + 4 };
+        VenomColor focus_color = venom_color_rgba(100, 150, 255, 200);
+        VenomPaint focus_paint = venom_paint_stroke(focus_color, 2.0f);
+        venom_canvas_draw_rounded_rect(canvas, focus_rect, btn->corner_radius + 2, &focus_paint);
     }
     
     /* Draw rounded rectangle background */
