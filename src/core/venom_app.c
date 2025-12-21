@@ -306,6 +306,42 @@ VenomWidget* venom_get_const_widget(const char* key) {
     return find_const_widget(key);
 }
 
+VenomWidget* _venom_const_get_or_create(const char* key, VenomWidget* new_widget) {
+    /* Try to find existing const widget */
+    VenomWidget* existing = find_const_widget(key);
+    if (existing) {
+        /* Found! Ref it and destroy the newly created one */
+        if (new_widget) {
+            venom_unref(new_widget);
+        }
+        return venom_ref(existing);
+    }
+    
+    /* Not found - add to permanent registry */
+    if (new_widget) {
+        venom_widget_set_const(new_widget, VENOM_TRUE);
+        venom_widget_set_const_key(new_widget, key);
+        
+        /* Add to registry (keep reference) */
+        if (g_app.const_count >= g_app.const_capacity) {
+            VenomU32 new_cap = g_app.const_capacity ? g_app.const_capacity * 2 : 16;
+            VenomWidget** new_arr = venom_realloc(g_app.const_widgets, 
+                                                   g_app.const_capacity * sizeof(VenomWidget*),
+                                                   new_cap * sizeof(VenomWidget*));
+            if (new_arr) {
+                g_app.const_widgets = new_arr;
+                g_app.const_capacity = new_cap;
+            }
+        }
+        
+        if (g_app.const_count < g_app.const_capacity) {
+            venom_ref(new_widget);  /* Registry owns a reference */
+            g_app.const_widgets[g_app.const_count++] = new_widget;
+        }
+    }
+    return new_widget;
+}
+
 VenomF64 venom_elapsed_time(void) {
     return (VenomF64)(clock() - g_app.start_time) / CLOCKS_PER_SEC;
 }
@@ -407,18 +443,11 @@ int venom_run_app(const VenomAppConfig* config) {
     while (g_app.running) {
         /* Handle rebuild request */
         if (g_app.needs_rebuild) {
-            /* Collect const widgets before destroying old tree */
-            collect_const_widgets(g_app.root);
-            
             venom_unref(g_app.root);
             g_app.root = config->build(config->user_data);
             if (g_app.root) {
                 venom_widget_layout(g_app.root, bounds);
             }
-            
-            /* Release references to const widgets (they're now in new tree or should be freed) */
-            release_const_widgets();
-            
             g_app.needs_rebuild = VENOM_FALSE;
             needs_redraw = VENOM_TRUE;
         }

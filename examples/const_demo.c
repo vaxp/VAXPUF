@@ -1,7 +1,7 @@
 /*
- * VENOMUI - Const Widget System Demo
+ * VENOMUI - Const Widget System Demo (Simplified API)
  * 
- * Demonstrates const widgets that persist across rebuilds.
+ * Shows Flutter-like VENOM_CONST() syntax.
  */
 
 #include <stdio.h>
@@ -39,7 +39,7 @@ static void increment(void) {
     s.count++;
     s.rebuild_count++;
     venom_cubit_emit_raw(g_cubit, &s);
-    venom_rebuild();  /* Trigger UI update */
+    venom_rebuild();
 }
 
 static void decrement(void) {
@@ -47,7 +47,7 @@ static void decrement(void) {
     s.count--;
     s.rebuild_count++;
     venom_cubit_emit_raw(g_cubit, &s);
-    venom_rebuild();  /* Trigger UI update */
+    venom_rebuild();
 }
 
 /* ============================================================================
@@ -58,7 +58,7 @@ static void on_inc(VenomButton* b, void* d) { (void)b; (void)d; increment(); }
 static void on_dec(VenomButton* b, void* d) { (void)b; (void)d; decrement(); }
 
 /* ============================================================================
- * BUILD UI (uses const widgets)
+ * BUILD UI - Clean Flutter-like Syntax!
  * ============================================================================ */
 
 static VenomWidget* build_app(void* ud) {
@@ -67,92 +67,41 @@ static VenomWidget* build_app(void* ud) {
     
     AppState* s = &g_cubit->state;
     
-    /* ========== CONST WIDGETS (reused across rebuilds) ========== */
-    
-    /* Title - const, never changes */
-    VenomWidget* title = venom_get_const_widget("title");
-    if (!title) {
-        title = venom_text("🔄 Const Widget Demo", .size = 24, .color = VENOM_COLOR_WHITE);
-        venom_widget_set_const(title, VENOM_TRUE);
-        venom_widget_set_const_key(title, "title");
-        printf("📦 Created NEW title widget\n");
-    } else {
-        venom_ref(title);
-        printf("♻️ REUSED title widget\n");
-    }
-    
-    /* Subtitle - const */
-    VenomWidget* subtitle = venom_get_const_widget("subtitle");
-    if (!subtitle) {
-        subtitle = venom_text("Widgets marked const are NOT recreated", 
-                              .size = 12, .color = venom_color_rgb(150, 150, 170));
-        venom_widget_set_const(subtitle, VENOM_TRUE);
-        venom_widget_set_const_key(subtitle, "subtitle");
-        printf("📦 Created NEW subtitle widget\n");
-    } else {
-        venom_ref(subtitle);
-        printf("♻️ REUSED subtitle widget\n");
-    }
-    
-    /* Buttons - const (they don't change) */
-    VenomWidget* btn_dec = venom_get_const_widget("btn_dec");
-    if (!btn_dec) {
-        btn_dec = venom_btn("➖", .color = VENOM_DANGER, .on_click = on_dec);
-        venom_widget_set_const(btn_dec, VENOM_TRUE);
-        venom_widget_set_const_key(btn_dec, "btn_dec");
-        printf("📦 Created NEW decrement button\n");
-    } else {
-        venom_ref(btn_dec);
-        printf("♻️ REUSED decrement button\n");
-    }
-    
-    VenomWidget* btn_inc = venom_get_const_widget("btn_inc");
-    if (!btn_inc) {
-        btn_inc = venom_btn("➕", .color = VENOM_SUCCESS, .on_click = on_inc);
-        venom_widget_set_const(btn_inc, VENOM_TRUE);
-        venom_widget_set_const_key(btn_inc, "btn_inc");
-        printf("📦 Created NEW increment button\n");
-    } else {
-        venom_ref(btn_inc);
-        printf("♻️ REUSED increment button\n");
-    }
-    
-    /* ========== DYNAMIC WIDGETS (recreated each time) ========== */
-    
-    /* Count display - dynamic, changes with state */
+    /* Dynamic widgets - recreated each build */
     char count_str[32];
     snprintf(count_str, sizeof(count_str), "Count: %d", s->count);
-    VenomWidget* count_label = venom_text(count_str, .size = 48, 
-                                           .color = s->count >= 0 ? VENOM_PRIMARY : VENOM_DANGER);
-    printf("🔄 Created DYNAMIC count label\n");
     
-    /* Rebuild info - dynamic */
     char info_str[64];
     snprintf(info_str, sizeof(info_str), "Rebuilds: %d", s->rebuild_count);
-    VenomWidget* info_label = venom_text(info_str, .size = 14, .color = VENOM_MUTED);
-    printf("🔄 Created DYNAMIC rebuild info\n");
     
-    /* Button row */
-    VenomWidget* btn_row = venom_row(.gap = 20, 
-                                      .children = (VenomWidget*[]){btn_dec, btn_inc, NULL});
-    
-    VenomF64 elapsed = get_time_ms() - start;
-    printf("⏱️ Build took: %.3f ms\n\n", elapsed);
-    
-    return venom_center(
+    VenomWidget* ui = venom_center(
         .gap = 20,
         .padding = (VenomInsets){40, 40, 40, 40},
         .background = VENOM_DARK,
         .corner_radius = 16,
-        .children = (VenomWidget*[]){
-            title,
-            subtitle,
-            count_label,
-            btn_row,
-            info_label,
-            NULL
-        }
+        .children = VENOM_CHILDREN(
+            /* ✨ CONST - Never recreated! */
+            VENOM_CONST(venom_text("🔄 Const Widget Demo", .size = 24, .color = VENOM_COLOR_WHITE)),
+            VENOM_CONST(venom_text("Widgets with VENOM_CONST are NOT recreated", .size = 12, .color = VENOM_MUTED)),
+            
+            /* Dynamic - Recreated each build */
+            venom_text(count_str, .size = 48, .color = s->count >= 0 ? VENOM_PRIMARY : VENOM_DANGER),
+            
+            /* ✨ CONST buttons - Never recreated! */
+            venom_row(.gap = 20, .children = VENOM_CHILDREN(
+                VENOM_CONST(venom_btn("➖", .color = VENOM_DANGER, .on_click = on_dec)),
+                VENOM_CONST(venom_btn("➕", .color = VENOM_SUCCESS, .on_click = on_inc))
+            )),
+            
+            /* Dynamic info */
+            venom_text(info_str, .size = 14, .color = VENOM_MUTED)
+        )
     );
+    
+    VenomF64 elapsed = get_time_ms() - start;
+    printf("⏱️ Build: %.3f ms (Rebuilds: %d)\n", elapsed, s->rebuild_count);
+    
+    return ui;
 }
 
 /* ============================================================================
@@ -160,11 +109,8 @@ static VenomWidget* build_app(void* ud) {
  * ============================================================================ */
 
 int main(void) {
-    printf("=== VENOMUI Const Widget Demo ===\n\n");
-    printf("Legend:\n");
-    printf("  📦 = New widget created\n");
-    printf("  ♻️ = Const widget reused\n");
-    printf("  🔄 = Dynamic widget (always recreated)\n\n");
+    printf("=== VENOMUI Const Widget Demo ===\n");
+    printf("Using simplified VENOM_CONST() syntax\n\n");
     
     g_cubit = VENOM_CUBIT_CREATE(App, AppState, { .count = 0, .rebuild_count = 0 });
     if (!g_cubit) {
@@ -174,8 +120,8 @@ int main(void) {
     
     int ret = VENOM_APP(
         .title = "Const Widget Demo",
-        .width = 400,
-        .height = 350,
+        .width = 420,
+        .height = 380,
         .build = build_app,
         .debug = VENOM_TRUE
     );

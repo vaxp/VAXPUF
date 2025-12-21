@@ -237,6 +237,30 @@ VenomWidget* venom_get_const_widget(const char* key);
  */
 VenomF64 venom_elapsed_time(void);
 
+/* ============================================================================
+ * CONST WIDGETS (Simple Flutter-like syntax)
+ * ============================================================================ */
+
+/**
+ * @brief Internal helper to get or create a const widget
+ */
+VenomWidget* _venom_const_get_or_create(const char* key, VenomWidget* new_widget);
+
+/**
+ * @brief Mark a widget as const (won't be recreated during rebuilds)
+ * 
+ * Usage:
+ *   venom_col(.children = VENOM_CHILDREN(
+ *       VENOM_CONST(venom_text("Static Title")),   // Cached
+ *       VENOM_CONST(venom_btn("Fixed Button")),    // Cached
+ *       venom_text("Dynamic: %d", count)            // Recreated
+ *   ))
+ */
+#define _VENOM_STRINGIFY(x) #x
+#define _VENOM_TOSTRING(x) _VENOM_STRINGIFY(x)
+#define VENOM_CONST(widget_expr) \
+    _venom_const_get_or_create(__FILE__ ":" _VENOM_TOSTRING(__LINE__), (widget_expr))
+
 #ifdef __cplusplus
 }
 #endif
