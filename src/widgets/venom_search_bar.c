@@ -111,6 +111,10 @@ static VenomBool search_bar_on_event(VenomWidget* widget, const VenomEvent* even
     
     switch (event->type) {
         case VENOM_EVENT_MOUSE_BUTTON_DOWN:
+            /* Set focus on click */
+            widget->state |= VENOM_WIDGET_STATE_FOCUSED;
+            widget->needs_redraw = VENOM_TRUE;
+            
             /* Check clear button */
             if (bar->text && bar->text[0] && bar->show_clear) {
                 if (event->mouse.x > widget->bounds.width - 40) {
@@ -118,7 +122,7 @@ static VenomBool search_bar_on_event(VenomWidget* widget, const VenomEvent* even
                     return VENOM_TRUE;
                 }
             }
-            break;
+            return VENOM_TRUE;
             
         case VENOM_EVENT_KEY_DOWN:
             if (event->key.key == VENOM_KEY_RETURN && bar->on_search) {
@@ -136,24 +140,25 @@ static VenomBool search_bar_on_event(VenomWidget* widget, const VenomEvent* even
                 if (bar->on_change) bar->on_change(bar, bar->text, bar->callback_data);
                 return VENOM_TRUE;
             }
-            break;
             
-        case VENOM_EVENT_TEXT_INPUT: {
-            const char* input = event->text.text;
-            VenomSize len = strlen(input);
-            
-            if (bar->text_len + len < bar->text_capacity) {
-                memmove(bar->text + bar->cursor_pos + len, bar->text + bar->cursor_pos,
-                        bar->text_len - bar->cursor_pos + 1);
-                memcpy(bar->text + bar->cursor_pos, input, len);
-                bar->cursor_pos += len;
-                bar->text_len += len;
-                widget->needs_redraw = VENOM_TRUE;
+            /* Handle printable characters from key event text field */
+            if (event->text.text[0] >= 32 && event->text.text[0] < 127) {
+                const char* input = event->text.text;
+                VenomSize len = strlen(input);
                 
-                if (bar->on_change) bar->on_change(bar, bar->text, bar->callback_data);
+                if (bar->text_len + len < bar->text_capacity) {
+                    memmove(bar->text + bar->cursor_pos + len, bar->text + bar->cursor_pos,
+                            bar->text_len - bar->cursor_pos + 1);
+                    memcpy(bar->text + bar->cursor_pos, input, len);
+                    bar->cursor_pos += len;
+                    bar->text_len += len;
+                    widget->needs_redraw = VENOM_TRUE;
+                    
+                    if (bar->on_change) bar->on_change(bar, bar->text, bar->callback_data);
+                    return VENOM_TRUE;
+                }
             }
-            return VENOM_TRUE;
-        }
+            break;
         
         default:
             break;

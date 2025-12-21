@@ -52,8 +52,9 @@ static void badge_measure(VenomWidget* widget, VenomF32 available_width, VenomF3
     if (badge->child) {
         venom_widget_measure(badge->child, available_width, available_height, out_width, out_height);
     } else {
-        *out_width = 0;
-        *out_height = 0;
+        /* Show badge circle even without child */
+        *out_width = badge->size;
+        *out_height = badge->size;
     }
 }
 
@@ -111,9 +112,15 @@ static void badge_draw(VenomWidget* widget, VenomCanvas* canvas) {
         badge_h = badge->size;
     }
     
-    /* Position at top-right corner */
-    VenomF32 bx = widget->bounds.width - badge_w / 2 + badge->offset_x;
-    VenomF32 by = -badge_h / 2 + badge->offset_y;
+    /* Position at top-right corner or center if no child */
+    VenomF32 bx, by;
+    if (badge->child) {
+        bx = widget->bounds.width - badge_w / 2 + badge->offset_x;
+        by = -badge_h / 2 + badge->offset_y;
+    } else {
+        bx = (widget->bounds.width - badge_w) / 2;
+        by = (widget->bounds.height - badge_h) / 2;
+    }
     
     /* Draw badge circle/pill */
     VenomPaint bg_paint = venom_paint_fill(badge->bg_color);

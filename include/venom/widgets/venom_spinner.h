@@ -23,6 +23,12 @@ typedef struct VenomSpinner {
     VenomColor track_color;
     VenomBool show_track;
     
+    /* Animation state (auto-animated) */
+    VenomF64 start_time;         /* Animation start time */
+    VenomF32 animation_duration; /* Full cycle duration in seconds */
+    VenomF32 arc_min;            /* Min arc length (fraction) */
+    VenomF32 arc_max;            /* Max arc length (fraction) */
+    
 } VenomSpinner;
 
 VenomResultPtr venom_spinner_create(void);

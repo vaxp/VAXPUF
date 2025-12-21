@@ -24,3 +24,8 @@ text_input_demo_exe = executable('text_input_demo',
     'text_input_demo.c',
     dependencies: venomui_dep,
 )
+
+widget_test_exe = executable('widget_test',
+    'widget_test.c',
+    dependencies: venomui_dep,
+)
