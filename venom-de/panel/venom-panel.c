@@ -33,6 +33,9 @@
 #include "venom/graphics/venom_canvas.h"
 #include "venom/graphics/venom_canvas_opengl.h"
 
+/* Audio D-Bus client */
+#include "audio_client.h"
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
@@ -52,6 +55,13 @@ static struct {
     Window cc_window;
     VenomCanvas* cc_canvas;
     int cc_visible;
+    
+    /* Audio state */
+    VenomAudioState audio;
+    int audio_connected;
+    
+    /* Slider dragging */
+    int volume_dragging;
 } g_state = {0};
 
 /* GLX context for sharing */
@@ -183,16 +193,43 @@ static void draw_control_center_content(VenomCanvas* canvas, int width, int heig
     VenomPaint sun = venom_paint_fill(venom_color_rgba(255, 255, 255, 255));
     venom_canvas_draw_circle(canvas, 35, slider_y + 17, 7, &sun);
     
-    /* Volume slider */
+    /* Volume slider - connected to audio D-Bus */
     float vol_y = slider_y + 50;
     venom_canvas_draw_rounded_rect(canvas, (VenomRectF){ 15, vol_y, width - 30, 35 }, 10.0f, &slider_bg);
     
-    VenomPaint vol_fill = venom_paint_fill(venom_color_rgba(100, 200, 150, 255));
-    venom_canvas_draw_rounded_rect(canvas, (VenomRectF){ 15, vol_y, (width - 30) * 0.5f, 35 }, 10.0f, &vol_fill);
+    /* Volume fill based on real audio volume */
+    float vol_percent = g_state.audio.volume / 100.0f;
+    VenomColor vol_color = g_state.audio.muted 
+        ? venom_color_rgba(100, 100, 100, 255) 
+        : venom_color_rgba(100, 200, 150, 255);
+    VenomPaint vol_fill = venom_paint_fill(vol_color);
+    venom_canvas_draw_rounded_rect(canvas, (VenomRectF){ 15, vol_y, (width - 30) * vol_percent, 35 }, 10.0f, &vol_fill);
     
     /* Speaker icon */
-    VenomPaint speaker = venom_paint_fill(venom_color_rgba(255, 255, 255, 255));
-    venom_canvas_draw_circle(canvas, 35, vol_y + 17, 7, &speaker);
+    VenomPaint speaker_p = venom_paint_fill(venom_color_rgba(255, 255, 255, 255));
+    /* Speaker body (small rectangle) */
+    venom_canvas_draw_rect(canvas, (VenomRectF){ 26, vol_y + 13, 6, 9 }, &speaker_p);
+    /* Speaker cone (larger part) */
+    venom_canvas_draw_rect(canvas, (VenomRectF){ 32, vol_y + 10, 4, 15 }, &speaker_p);
+    /* Sound waves (if not muted) */
+    if (!g_state.audio.muted && g_state.audio.volume > 0) {
+        VenomPaint wave = venom_paint_stroke(venom_color_rgba(255, 255, 255, 180), 1.5f);
+        venom_canvas_draw_circle(canvas, 40, vol_y + 17, 5, &wave);
+        if (g_state.audio.volume > 50) {
+            venom_canvas_draw_circle(canvas, 40, vol_y + 17, 9, &wave);
+        }
+    }
+    /* Mute line (if muted) */
+    if (g_state.audio.muted) {
+        VenomPaint mute = venom_paint_stroke(venom_color_rgba(255, 80, 80, 255), 2.0f);
+        venom_canvas_draw_line(canvas, 25, vol_y + 8, 45, vol_y + 27, &mute);
+    }
+    
+    /* Volume percentage text */
+    char vol_str[8];
+    snprintf(vol_str, sizeof(vol_str), "%d%%", g_state.audio.volume);
+    VenomPaint vol_text = venom_paint_fill(venom_color_rgba(255, 255, 255, 200));
+    venom_canvas_draw_text(canvas, vol_str, width - 60, vol_y + 24, NULL, &vol_text);
     
     /* Music player area */
     float music_y = vol_y + 55;
@@ -377,6 +414,17 @@ int main(int argc, char** argv) {
     update_battery();
     time_t last_battery_update = time(NULL);
     
+    /* Initialize audio D-Bus connection */
+    g_state.audio_connected = venom_audio_init();
+    if (g_state.audio_connected) {
+        venom_audio_get_state(&g_state.audio);
+        printf("Audio: Volume=%d%%, Muted=%s\n", g_state.audio.volume, g_state.audio.muted ? "yes" : "no");
+    } else {
+        printf("Audio: Not connected (daemon not running?)\n");
+        g_state.audio.volume = 50;
+        g_state.audio.muted = false;
+    }
+    
     /* FPS counter */
     struct timespec ts_start, ts_now;
     clock_gettime(CLOCK_MONOTONIC, &ts_start);
@@ -408,11 +456,39 @@ int main(int argc, char** argv) {
                             hide_control_center(display);
                         }
                     }
+                    else if (event.xbutton.window == g_state.cc_window) {
+                        int mx = event.xbutton.x;
+                        int my = event.xbutton.y;
+                        
+                        /* Volume slider area: x=15 to cc_width-15, y=175 to 210 (approx) */
+                        if (mx >= 15 && mx <= cc_width - 15 && my >= 175 && my <= 210) {
+                            g_state.volume_dragging = 1;  /* Enable dragging */
+                            
+                            /* Calculate volume from X position */
+                            float slider_width = cc_width - 30;
+                            float click_pos = mx - 15;
+                            int new_volume = (int)((click_pos / slider_width) * 100);
+                            if (new_volume < 0) new_volume = 0;
+                            if (new_volume > 100) new_volume = 100;
+                            
+                            if (g_state.audio_connected) {
+                                venom_audio_set_volume(new_volume);
+                                g_state.audio.volume = new_volume;
+                            }
+                        }
+                        
+                        /* Brightness slider: y=125 to 160 (approx) */
+                        /* TODO: Add brightness control */
+                    }
+                    break;
+                    
+                case ButtonRelease:
+                    g_state.volume_dragging = 0;
                     break;
                     
                 case LeaveNotify:
                     if (event.xcrossing.window == g_state.cc_window) {
-                        /* Could auto-hide on leave if desired */
+                        g_state.volume_dragging = 0;
                     }
                     break;
                     
@@ -423,6 +499,20 @@ int main(int argc, char** argv) {
                         g_state.icon_hovered = (event.xmotion.x >= screen_width - 35 && 
                                                 event.xmotion.x <= screen_width - 10 &&
                                                 event.xmotion.y >= 5 && event.xmotion.y <= 21);
+                    }
+                    else if (event.xmotion.window == g_state.cc_window && g_state.volume_dragging) {
+                        /* Dragging volume slider */
+                        int mx = event.xmotion.x;
+                        float slider_width = cc_width - 30;
+                        float click_pos = mx - 15;
+                        int new_volume = (int)((click_pos / slider_width) * 100);
+                        if (new_volume < 0) new_volume = 0;
+                        if (new_volume > 100) new_volume = 100;
+                        
+                        if (g_state.audio_connected) {
+                            venom_audio_set_volume(new_volume);
+                            g_state.audio.volume = new_volume;
+                        }
                     }
                     break;
                     
@@ -490,8 +580,20 @@ int main(int argc, char** argv) {
             fflush(stdout);
         }
         
+        /* Update audio state periodically */
+        static int audio_update_counter = 0;
+        if (++audio_update_counter >= 60) {  /* Every ~0.5s */
+            audio_update_counter = 0;
+            if (g_state.audio_connected) {
+                venom_audio_get_state(&g_state.audio);
+            }
+        }
+        
         usleep(8000); /* ~120 FPS */
     }
+    
+    /* Cleanup audio */
+    venom_audio_cleanup();
     
     printf("\n\nPanel demo finished!\n");
     

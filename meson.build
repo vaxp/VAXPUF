@@ -218,6 +218,9 @@ if build_tests
     subdir('tests')
 endif
 
+# Venom Desktop Environment
+subdir('venom-de')
+
 # Summary
 backend_name = 'Cairo'
 if enable_opengl

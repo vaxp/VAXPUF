@@ -25,6 +25,10 @@
 #include <string.h>
 #include <stdlib.h>
 
+/* stb_truetype for font rendering */
+#define STB_TRUETYPE_IMPLEMENTATION
+#include "venom/third_party/stb_truetype.h"
+
 /* ============================================================================
  * OPENGL FUNCTION POINTERS (GL 3.3 Core)
  * ============================================================================ */
@@ -224,6 +228,30 @@ static const char* FRAGMENT_SHADER_3D =
     "    FragColor = vec4(result, 1.0);\n"
     "}\n";
 
+/* Text vertex shader */
+static const char* VERTEX_SHADER_TEXT = 
+    "#version 330 core\n"
+    "layout(location = 0) in vec2 aPos;\n"
+    "layout(location = 1) in vec2 aTexCoord;\n"
+    "uniform mat4 uProjection;\n"
+    "out vec2 vTexCoord;\n"
+    "void main() {\n"
+    "    gl_Position = uProjection * vec4(aPos, 0.0, 1.0);\n"
+    "    vTexCoord = aTexCoord;\n"
+    "}\n";
+
+/* Text fragment shader */
+static const char* FRAGMENT_SHADER_TEXT = 
+    "#version 330 core\n"
+    "in vec2 vTexCoord;\n"
+    "out vec4 FragColor;\n"
+    "uniform sampler2D uTexture;\n"
+    "uniform vec4 uColor;\n"
+    "void main() {\n"
+    "    float alpha = texture(uTexture, vTexCoord).r;\n"
+    "    FragColor = vec4(uColor.rgb, uColor.a * alpha);\n"
+    "}\n";
+
 /* ============================================================================
  * OPENGL CANVAS STRUCTURE
  * ============================================================================ */
@@ -242,6 +270,7 @@ typedef struct VenomGLCanvas {
     GLuint prog_rounded;
     GLuint prog_circle;
     GLuint prog_3d;
+    GLuint prog_text;  /* Text/texture shader */
     
     /* Quad mesh for 2D rendering */
     GLuint quad_vao;
@@ -250,6 +279,12 @@ typedef struct VenomGLCanvas {
     /* 3D cube mesh */
     GLuint cube_vao;
     GLuint cube_vbo;
+    
+    /* Font rendering */
+    GLuint font_texture;
+    stbtt_bakedchar font_chars[96];  /* ASCII 32-127 */
+    int font_loaded;
+    float font_size;
     
     /* State stack */
     float transform_stack[32][16]; /* 4x4 matrices */
@@ -490,6 +525,56 @@ static void gl_make_current(VenomGLCanvas* c) {
     glXMakeCurrent(c->display, c->window, c->glx_context);
 }
 
+/* Load font and create texture atlas */
+static int gl_load_font(VenomGLCanvas* c, const char* font_path, float font_size) {
+    FILE* f = fopen(font_path, "rb");
+    if (!f) {
+        fprintf(stderr, "Could not open font: %s\n", font_path);
+        return 0;
+    }
+    
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    
+    unsigned char* font_data = (unsigned char*)malloc(size);
+    if (!font_data) {
+        fclose(f);
+        return 0;
+    }
+    
+    if (fread(font_data, 1, size, f) != (size_t)size) {
+        free(font_data);
+        fclose(f);
+        return 0;
+    }
+    fclose(f);
+    
+    /* Create bitmap for font */
+    int tex_w = 512, tex_h = 512;
+    unsigned char* bitmap = (unsigned char*)calloc(tex_w * tex_h, 1);
+    
+    stbtt_BakeFontBitmap(font_data, 0, font_size, bitmap, tex_w, tex_h, 
+                         32, 96, c->font_chars);
+    
+    free(font_data);
+    
+    /* Create OpenGL texture */
+    glGenTextures(1, &c->font_texture);
+    glBindTexture(GL_TEXTURE_2D, c->font_texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, tex_w, tex_h, 0, 
+                 GL_RED, GL_UNSIGNED_BYTE, bitmap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    
+    free(bitmap);
+    
+    c->font_size = font_size;
+    c->font_loaded = 1;
+    printf("Font loaded: %s (%.0fpx)\n", font_path, font_size);
+    return 1;
+}
+
 static void gl_canvas_destroy(VenomCanvas* canvas) {
     VenomGLCanvas* c = (VenomGLCanvas*)canvas;
     gl_make_current(c);
@@ -716,25 +801,82 @@ static void gl_canvas_draw_path(VenomCanvas* canvas, const VenomPath* path, cons
 
 static void gl_canvas_draw_text(VenomCanvas* canvas, const char* text, VenomF32 x, VenomF32 y,
                                  const VenomFont* font, const VenomPaint* paint) {
-    /* Simple placeholder - draws rectangles for each character */
     VenomGLCanvas* c = (VenomGLCanvas*)canvas;
     (void)font;
     
     if (!text || !*text) return;
     
-    VenomF32 char_width = 10.0f;
-    VenomF32 char_height = 16.0f;
-    VenomF32 cursor_x = x;
-    
-    for (const char* p = text; *p; p++) {
-        if (*p == ' ') {
-            cursor_x += char_width;
-            continue;
+    /* If font not loaded, try to load default font */
+    if (!c->font_loaded) {
+        /* Try common font paths */
+        static const char* font_paths[] = {
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",
+            "/usr/share/fonts/noto/NotoSans-Regular.ttf",
+            NULL
+        };
+        
+        for (int i = 0; font_paths[i]; i++) {
+            if (gl_load_font(c, font_paths[i], 18.0f)) break;
         }
         
-        VenomRectF char_rect = { cursor_x, y - char_height, char_width - 2, char_height };
-        gl_canvas_draw_rect((VenomCanvas*)c, char_rect, paint);
-        cursor_x += char_width;
+        if (!c->font_loaded) {
+            /* Fallback: draw rectangles */
+            VenomF32 cursor = x;
+            for (const char* p = text; *p; p++) {
+                VenomRectF r = { cursor, y - 12, 8, 14 };
+                gl_canvas_draw_rect(canvas, r, paint);
+                cursor += 10;
+            }
+            return;
+        }
+    }
+    
+    /* Use text shader */
+    glUseProgram(c->prog_text);
+    glUniformMatrix4fv(glGetUniformLocation(c->prog_text, "uProjection"), 
+                       1, GL_FALSE, c->projection_matrix);
+    glUniform4f(glGetUniformLocation(c->prog_text, "uColor"),
+                paint->color.r / 255.0f, paint->color.g / 255.0f,
+                paint->color.b / 255.0f, paint->color.a / 255.0f);
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, c->font_texture);
+    glUniform1i(glGetUniformLocation(c->prog_text, "uTexture"), 0);
+    
+    float cursor_x = x;
+    
+    for (const char* p = text; *p; p++) {
+        if (*p < 32 || *p >= 127) continue;
+        
+        stbtt_bakedchar* ch = &c->font_chars[*p - 32];
+        
+        float x0 = cursor_x + ch->xoff;
+        float y0 = y + ch->yoff;
+        float x1 = x0 + (ch->x1 - ch->x0);
+        float y1 = y0 + (ch->y1 - ch->y0);
+        
+        float s0 = ch->x0 / 512.0f;
+        float t0 = ch->y0 / 512.0f;
+        float s1 = ch->x1 / 512.0f;
+        float t1 = ch->y1 / 512.0f;
+        
+        float vertices[] = {
+            x0, y0, s0, t0,
+            x1, y0, s1, t0,
+            x1, y1, s1, t1,
+            x0, y0, s0, t0,
+            x1, y1, s1, t1,
+            x0, y1, s0, t1,
+        };
+        
+        glBindVertexArray(c->quad_vao);
+        glBindBuffer(GL_ARRAY_BUFFER, c->quad_vbo);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        
+        cursor_x += ch->xadvance;
     }
 }
 
@@ -885,6 +1027,11 @@ VenomResultPtr venom_canvas_create_opengl(Display* display, Window window,
     canvas->prog_rounded = create_program(VERTEX_SHADER_2D, FRAGMENT_SHADER_ROUNDED_RECT);
     canvas->prog_circle = create_program(VERTEX_SHADER_2D, FRAGMENT_SHADER_CIRCLE);
     canvas->prog_3d = create_program(VERTEX_SHADER_3D, FRAGMENT_SHADER_3D);
+    canvas->prog_text = create_program(VERTEX_SHADER_TEXT, FRAGMENT_SHADER_TEXT);
+    
+    /* Initialize font state */
+    canvas->font_loaded = 0;
+    canvas->font_texture = 0;
     
     if (!canvas->prog_solid || !canvas->prog_rounded || !canvas->prog_circle || !canvas->prog_3d) {
         fprintf(stderr, "Failed to create shader programs\n");
