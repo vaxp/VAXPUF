@@ -485,8 +485,14 @@ static const float CUBE_VERTICES[] = {
  * CANVAS OPERATIONS
  * ============================================================================ */
 
+/* Make this canvas's context current before any GL operations */
+static void gl_make_current(VenomGLCanvas* c) {
+    glXMakeCurrent(c->display, c->window, c->glx_context);
+}
+
 static void gl_canvas_destroy(VenomCanvas* canvas) {
     VenomGLCanvas* c = (VenomGLCanvas*)canvas;
+    gl_make_current(c);
     
     if (c->prog_solid) glDeleteProgram(c->prog_solid);
     if (c->prog_rounded) glDeleteProgram(c->prog_rounded);
@@ -547,7 +553,8 @@ static void gl_canvas_clip_rounded_rect(VenomCanvas* canvas, VenomRectF rect, Ve
 }
 
 static void gl_canvas_clear(VenomCanvas* canvas, VenomColor color) {
-    (void)canvas;
+    VenomGLCanvas* c = (VenomGLCanvas*)canvas;
+    gl_make_current(c);
     glClearColor(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
@@ -744,6 +751,7 @@ static void gl_canvas_draw_image_rect(VenomCanvas* canvas, const VenomImage* ima
 
 static void gl_canvas_flush(VenomCanvas* canvas) {
     VenomGLCanvas* c = (VenomGLCanvas*)canvas;
+    gl_make_current(c);
     glFlush();
     glXSwapBuffers(c->display, c->window);
 }
