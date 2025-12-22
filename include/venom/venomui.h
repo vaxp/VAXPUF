@@ -24,6 +24,9 @@
 #include "venom/backend/venom_event_queue.h"
 #include "venom/backend/venom_window.h"
 #include "venom/backend/venom_surface.h"
+#include "venom/backend/venom_dnd.h"
+#include "venom/backend/venom_clipboard.h"
+#include "venom/backend/venom_cursor.h"
 
 /* Graphics */
 #include "venom/graphics/venom_canvas.h"

@@ -84,6 +84,9 @@ core_sources = files(
 backend_sources = files(
     'src/backend/x11/venom_x11_display.c',
     'src/backend/x11/venom_event.c',
+    'src/backend/x11/venom_x11_dnd.c',
+    'src/backend/x11/venom_x11_clipboard.c',
+    'src/backend/x11/venom_x11_cursor.c',
     'src/backend/venom_window.c',
     'src/backend/venom_event_queue.c',
 )

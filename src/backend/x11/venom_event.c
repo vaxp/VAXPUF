@@ -30,6 +30,11 @@ const char* venom_event_type_name(VenomEventType type) {
         case VENOM_EVENT_KEY_UP: return "KeyUp";
         case VENOM_EVENT_TEXT_INPUT: return "TextInput";
         
+        case VENOM_EVENT_DND_ENTER: return "DndEnter";
+        case VENOM_EVENT_DND_POSITION: return "DndPosition";
+        case VENOM_EVENT_DND_LEAVE: return "DndLeave";
+        case VENOM_EVENT_DND_DROP: return "DndDrop";
+        
         case VENOM_EVENT_QUIT: return "Quit";
         case VENOM_EVENT_USER: return "User";
         

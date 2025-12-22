@@ -61,6 +61,7 @@ typedef enum VenomError {
     VENOM_ERROR_FILE_READ = 401,
     VENOM_ERROR_FILE_WRITE = 402,
     VENOM_ERROR_PATH_NOT_FOUND = 403,
+    VENOM_ERROR_IO = 404,
     
 } VenomError;
 

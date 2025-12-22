@@ -43,6 +43,12 @@ typedef enum VenomEventType {
     VENOM_EVENT_KEY_UP,
     VENOM_EVENT_TEXT_INPUT,
     
+    /* Drag and Drop events */
+    VENOM_EVENT_DND_ENTER,      /* Drag entered window */
+    VENOM_EVENT_DND_POSITION,   /* Drag moved within window */
+    VENOM_EVENT_DND_LEAVE,      /* Drag left window */
+    VENOM_EVENT_DND_DROP,       /* Drop occurred */
+    
     /* Other */
     VENOM_EVENT_QUIT,
     VENOM_EVENT_USER,  /* Custom user event */
@@ -198,6 +204,18 @@ typedef struct VenomTextEvent {
     char text[32];        /* UTF-8 encoded text */
 } VenomTextEvent;
 
+typedef struct VenomDndEvent {
+    VenomU32 window_id;       /* Target window ID */
+    VenomU32 source_window;   /* Source window ID (for ENTER) */
+    VenomI32 x;               /* X position relative to window */
+    VenomI32 y;               /* Y position relative to window */
+    VenomI32 root_x;          /* X position on screen */
+    VenomI32 root_y;          /* Y position on screen */
+    VenomU32 actions;         /* Supported actions bitmask */
+    char** mime_types;        /* Available MIME types (for ENTER) */
+    VenomU32 mime_type_count; /* Number of MIME types */
+} VenomDndEvent;
+
 /* ============================================================================
  * UNIFIED EVENT STRUCTURE
  * ============================================================================ */
@@ -212,7 +230,8 @@ typedef struct VenomEvent {
         VenomScrollEvent scroll;
         VenomKeyEvent key;
         VenomTextEvent text;
-        void* user_data;  /* For VENOM_EVENT_USER */
+        VenomDndEvent dnd;    /* For DND events */
+        void* user_data;      /* For VENOM_EVENT_USER */
     };
 } VenomEvent;
 
@@ -244,6 +263,13 @@ VENOM_INLINE VenomBool venom_event_is_keyboard(VenomEventType type) {
  */
 VENOM_INLINE VenomBool venom_event_is_window(VenomEventType type) {
     return type >= VENOM_EVENT_WINDOW_CLOSE && type <= VENOM_EVENT_WINDOW_HIDE;
+}
+
+/**
+ * @brief Check if event is a drag and drop event
+ */
+VENOM_INLINE VenomBool venom_event_is_dnd(VenomEventType type) {
+    return type >= VENOM_EVENT_DND_ENTER && type <= VENOM_EVENT_DND_DROP;
 }
 
 #ifdef __cplusplus
