@@ -6,7 +6,7 @@
  * - Control center popup window when clicking the icon
  * 
  * This demonstrates OpenGL can build desktop environments!
- */
+*/
 
 #define _POSIX_C_SOURCE 199309L
 #define _DEFAULT_SOURCE
@@ -264,7 +264,7 @@ static Window create_popup_window(Display* display, int screen, XVisualInfo* vi,
     
     XSetWindowAttributes swa = {0};
     swa.colormap = colormap;
-    swa.event_mask = ExposureMask | ButtonPressMask | PointerMotionMask | LeaveWindowMask;
+    swa.event_mask = ExposureMask | ButtonPressMask | ButtonReleaseMask | Button1MotionMask | LeaveWindowMask;
     swa.override_redirect = True;  /* No window decorations */
     swa.background_pixel = 0;
     swa.border_pixel = 0;
