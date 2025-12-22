@@ -14,10 +14,15 @@ project('venomui', ['c', 'cpp'],
 build_examples = get_option('examples')
 build_tests = get_option('tests')
 enable_debug = get_option('debug_memory')
+enable_opengl = get_option('opengl')
 
 # Dependencies
 x11_dep = dependency('x11', required: true)
 xcb_dep = dependency('xcb', required: false)
+
+# OpenGL dependencies (optional)
+gl_dep = dependency('gl', required: false)
+glx_dep = dependency('glx', required: false)  # Part of X11/OpenGL
 
 # Skia dependency (may need custom handling)
 skia_dep = dependency('skia', required: false)
@@ -26,10 +31,15 @@ skia_dep = dependency('skia', required: false)
 cairo_dep = dependency('cairo', required: false)
 
 # PangoCairo for proper international text rendering (Arabic, CJK, etc.)
-pangocairo_dep = dependency('pangocairo', required: true)
+pangocairo_dep = dependency('pangocairo', required: false)
 
-if not skia_dep.found() and not cairo_dep.found()
-    error('Either Skia or Cairo is required for rendering')
+# Check for valid backend
+if enable_opengl
+    if not gl_dep.found()
+        error('OpenGL backend requested but OpenGL not found')
+    endif
+elif not skia_dep.found() and not cairo_dep.found()
+    error('Either Skia, Cairo, or OpenGL is required for rendering')
 endif
 
 # Thread support for atomic operations
@@ -48,6 +58,10 @@ cpp_args = []
 if enable_debug
     c_args += ['-DVENOM_DEBUG=1']
     cpp_args += ['-DVENOM_DEBUG=1']
+endif
+
+if enable_opengl
+    c_args += ['-DVENOM_USE_OPENGL=1']
 endif
 
 # Include directories
@@ -140,13 +154,23 @@ state_sources = files(
 )
 
 # Graphics sources depend on available backend
-if skia_dep.found()
+if enable_opengl
+    # OpenGL mode: use OpenGL canvas but also keep Cairo for image widgets
+    graphics_sources = files(
+        'src/graphics/venom_canvas_opengl.c',
+        'src/graphics/venom_canvas_cairo.c'  # Still needed for app integration
+    )
+    graphics_dep = gl_dep
+    graphics_extra_deps = [cairo_dep, pangocairo_dep]
+elif skia_dep.found()
     graphics_sources = files('src/graphics/venom_canvas_skia.cpp')
     graphics_dep = skia_dep
+    graphics_extra_deps = [pangocairo_dep]
 else
     # Cairo fallback implementation
     graphics_sources = files('src/graphics/venom_canvas_cairo.c')
     graphics_dep = cairo_dep
+    graphics_extra_deps = [pangocairo_dep]
 endif
 
 all_sources = [
@@ -161,7 +185,7 @@ all_sources = [
 venomui_lib = library('venomui',
     all_sources,
     include_directories: inc_dirs,
-    dependencies: [x11_dep, graphics_dep, pangocairo_dep, png_dep, thread_dep, m_dep],
+    dependencies: [x11_dep, graphics_dep, png_dep, thread_dep, m_dep] + graphics_extra_deps,
     c_args: c_args,
     cpp_args: cpp_args,
     install: true,
@@ -195,8 +219,15 @@ if build_tests
 endif
 
 # Summary
+backend_name = 'Cairo'
+if enable_opengl
+    backend_name = 'OpenGL'
+elif skia_dep.found()
+    backend_name = 'Skia'
+endif
+
 summary({
-    'Backend': skia_dep.found() ? 'Skia' : 'Cairo',
+    'Backend': backend_name,
     'Debug Memory': enable_debug,
     'Build Examples': build_examples,
     'Build Tests': build_tests,

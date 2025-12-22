@@ -44,3 +44,14 @@ new_widgets_demo_exe = executable('new_widgets_demo',
     'new_widgets_demo.c',
     dependencies: venomui_dep,
 )
+
+# OpenGL demo - only build when OpenGL backend is enabled
+if enable_opengl
+    gl_dep_for_demo = dependency('gl', required: true)
+    x11_dep_for_demo = dependency('x11', required: true)
+    m_dep_for_demo = meson.get_compiler('c').find_library('m', required: true)
+    opengl_demo_exe = executable('opengl_demo',
+        'opengl_demo.c',
+        dependencies: [venomui_dep, gl_dep_for_demo, x11_dep_for_demo, m_dep_for_demo],
+    )
+endif
