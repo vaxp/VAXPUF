@@ -328,6 +328,35 @@ VENOM_INLINE VenomColor venom_color_from_u32(VenomU32 argb) {
 #define VENOM_RETURN_VOID_IF_NULL(ptr) \
     do { if (VENOM_UNLIKELY((ptr) == NULL)) return; } while (0)
 
+/* ============================================================================
+ * WINDOW TYPES (Desktop Environment)
+ * ============================================================================ */
+
+/**
+ * @brief Window type for desktop environment integration
+ */
+typedef enum VenomWindowType {
+    VENOM_WINDOW_NORMAL,         /**< Default window with decorations */
+    VENOM_WINDOW_PANEL,          /**< Top panel - dock, strut, no decorations */
+    VENOM_WINDOW_DOCK,           /**< Bottom dock - dock, strut */
+    VENOM_WINDOW_POPUP,          /**< Popup/Control center - no decorations */
+    VENOM_WINDOW_LAUNCHER,       /**< App launcher - fullscreen overlay */
+    VENOM_WINDOW_DESKTOP,        /**< Desktop background window */
+} VenomWindowType;
+
+/**
+ * @brief Window position hints
+ */
+typedef enum VenomWindowPosition {
+    VENOM_POSITION_DEFAULT,      /**< Let window manager decide */
+    VENOM_POSITION_CENTER,       /**< Center on screen */
+    VENOM_POSITION_TOP,          /**< Full width at top */
+    VENOM_POSITION_BOTTOM,       /**< Full width at bottom */
+    VENOM_POSITION_LEFT,         /**< Full height at left */
+    VENOM_POSITION_RIGHT,        /**< Full height at right */
+    VENOM_POSITION_FULLSCREEN,   /**< Cover entire screen */
+} VenomWindowPosition;
+
 #ifdef __cplusplus
 }
 #endif

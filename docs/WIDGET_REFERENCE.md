@@ -1,6 +1,6 @@
 # VENOMUI Widget Documentation
 
-Complete API reference and usage guide for all 51 VENOMUI widgets.
+Complete API reference and usage guide for all 61 VENOMUI widgets.
 
 ---
 
@@ -13,6 +13,8 @@ Complete API reference and usage guide for all 51 VENOMUI widgets.
 5. [Navigation Widgets](#navigation-widgets)
 6. [Feedback & Overlays](#feedback--overlays)
 7. [Multi-Step Widgets](#multi-step-widgets)
+8. [Desktop UI Widgets](#desktop-ui-widgets)
+
 
 ---
 
@@ -1246,7 +1248,130 @@ venom_file_chooser_refresh(chooser);
 
 ---
 
+## Desktop UI Widgets
+
+### VenomMenuBar
+
+Classic desktop-style menu bar (File, Edit, View, etc.).
+
+```c
+/* Create menu bar */
+VenomMenuBar* menubar = (VenomMenuBar*)venom_menubar_create().value;
+
+/* Create submenus using ContextMenu */
+VenomContextMenu* file_menu = (VenomContextMenu*)venom_context_menu_create().value;
+venom_context_menu_add_item(file_menu, "New", on_new, NULL);
+venom_context_menu_add_item(file_menu, "Open", on_open, NULL);
+venom_context_menu_add_separator(file_menu);
+venom_context_menu_add_item(file_menu, "Exit", on_exit, NULL);
+
+VenomContextMenu* edit_menu = (VenomContextMenu*)venom_context_menu_create().value;
+venom_context_menu_add_item(edit_menu, "Undo", on_undo, NULL);
+venom_context_menu_add_item(edit_menu, "Redo", on_redo, NULL);
+
+/* Add menus to bar */
+venom_menubar_add_menu(menubar, "File", file_menu);
+venom_menubar_add_menu(menubar, "Edit", edit_menu);
+
+/* Or with mnemonic (Alt+F) */
+venom_menubar_add_menu_with_mnemonic(menubar, "_File", file_menu);
+
+/* API */
+venom_menubar_set_background(menubar, (VenomColor){240, 240, 240, 255});
+venom_menubar_set_height(menubar, 28.0f);
+venom_menubar_open_menu(menubar, 0);  /* Open first menu */
+venom_menubar_close_menus(menubar);
+```
+
+---
+
+### VenomToolbar
+
+Horizontal bar with tool buttons.
+
+```c
+void on_tool_click(VenomToolbar* bar, VenomU32 index, void* data) {
+    printf("Tool %u clicked\n", index);
+}
+
+/* Create toolbar */
+VenomToolbar* toolbar = (VenomToolbar*)venom_toolbar_create().value;
+
+/* Add buttons */
+venom_toolbar_add_button(toolbar, "📄", "New", "Create new file", on_tool_click, NULL);
+venom_toolbar_add_button(toolbar, "📂", "Open", "Open file", on_tool_click, NULL);
+venom_toolbar_add_button(toolbar, "💾", "Save", "Save file", on_tool_click, NULL);
+
+/* Add separator */
+venom_toolbar_add_separator(toolbar);
+
+/* Add toggle buttons */
+venom_toolbar_add_toggle(toolbar, "B", "Bold", "Toggle bold", VENOM_FALSE, on_tool_click, NULL);
+venom_toolbar_add_toggle(toolbar, "I", "Italic", "Toggle italic", VENOM_FALSE, on_tool_click, NULL);
+
+/* Add flexible spacer (pushes remaining items to right) */
+venom_toolbar_add_spacer(toolbar);
+
+/* API */
+venom_toolbar_set_style(toolbar, VENOM_TOOLBAR_STYLE_ICON_ONLY);  /* ICON_ONLY, TEXT_ONLY, ICON_TEXT */
+venom_toolbar_set_height(toolbar, 40.0f);
+venom_toolbar_set_button_size(toolbar, 32.0f);
+venom_toolbar_set_enabled(toolbar, 2, VENOM_FALSE);  /* Disable save button */
+venom_toolbar_set_toggled(toolbar, 3, VENOM_TRUE);   /* Set bold on */
+```
+
+---
+
+### VenomTitleBar
+
+Custom window title bar with control buttons.
+
+```c
+void on_close(VenomTitleBar* bar, void* data) {
+    printf("Close button clicked\n");
+    /* Exit app */
+}
+
+void on_drag(VenomTitleBar* bar, VenomI32 dx, VenomI32 dy, void* data) {
+    /* Move window */
+    venom_window_move_by(window, dx, dy);
+}
+
+/* Create title bar */
+VenomTitleBar* titlebar = (VenomTitleBar*)venom_titlebar_create("My Application").value;
+
+/* Set callbacks */
+venom_titlebar_on_minimize(titlebar, on_minimize, NULL);
+venom_titlebar_on_maximize(titlebar, on_maximize, NULL);
+venom_titlebar_on_restore(titlebar, on_restore, NULL);  /* When clicking max while maximized */
+venom_titlebar_on_close(titlebar, on_close, NULL);
+venom_titlebar_on_drag(titlebar, on_drag, NULL);  /* For window movement */
+
+/* Configure buttons */
+venom_titlebar_set_buttons(titlebar, 
+    VENOM_TITLEBAR_BUTTON_MINIMIZE | 
+    VENOM_TITLEBAR_BUTTON_MAXIMIZE | 
+    VENOM_TITLEBAR_BUTTON_CLOSE);
+
+/* API */
+venom_titlebar_set_title(titlebar, "New Title");
+venom_titlebar_set_maximized(titlebar, VENOM_TRUE);  /* Changes maximize icon */
+venom_titlebar_set_center_title(titlebar, VENOM_TRUE);
+venom_titlebar_set_height(titlebar, 32.0f);
+
+/* Themes */
+venom_titlebar_apply_dark_theme(titlebar);
+venom_titlebar_apply_light_theme(titlebar);
+
+/* Add custom widgets */
+venom_titlebar_add_left_widget(titlebar, menu_button);
+venom_titlebar_add_right_widget(titlebar, search_button);
+```
+
+---
+
 ## Complete Example
+
 
 ```c
 #include <venomui.h>

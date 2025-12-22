@@ -50,6 +50,16 @@ widget_panel_demo_exe = executable('widget_panel_demo',
     dependencies: venomui_dep,
 )
 
+desktop_panel_demo_exe = executable('desktop_panel_demo',
+    'desktop_panel_demo.c',
+    dependencies: venomui_dep,
+)
+
+control_center_demo_exe = executable('control_center_demo',
+    'control_center_demo.c',
+    dependencies: venomui_dep,
+)
+
 # OpenGL demo - only build when OpenGL backend is enabled
 if enable_opengl
     gl_dep_for_demo = dependency('gl', required: true)
@@ -66,3 +76,5 @@ if enable_opengl
         dependencies: [venomui_dep, gl_dep_for_demo, x11_dep_for_demo, m_dep_for_demo],
     )
 endif
+
+

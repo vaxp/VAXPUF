@@ -52,6 +52,13 @@ typedef struct VenomDisplayOps {
     VenomResultPtr (*create_window)(VenomDisplay* display, const char* title,
                                      VenomI32 x, VenomI32 y,
                                      VenomU32 width, VenomU32 height);
+    
+    /* Typed window creation for desktop environments */
+    VenomResultPtr (*create_window_typed)(VenomDisplay* display, 
+                                          VenomWindowType type,
+                                          VenomWindowPosition position,
+                                          const char* title,
+                                          VenomU32 width, VenomU32 height);
 } VenomDisplayOps;
 
 /* ============================================================================

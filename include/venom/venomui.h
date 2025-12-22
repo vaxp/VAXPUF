@@ -90,6 +90,9 @@
 #include "venom/widgets/venom_carousel.h"
 #include "venom/widgets/venom_table.h"
 #include "venom/widgets/venom_chart.h"
+#include "venom/widgets/venom_menubar.h"
+#include "venom/widgets/venom_toolbar.h"
+#include "venom/widgets/venom_titlebar.h"
 
 /* High-level API */
 #include "venom/venom_app.h"

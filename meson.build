@@ -149,6 +149,9 @@ widget_sources = files(
     'src/widgets/venom_carousel.c',
     'src/widgets/venom_table.c',
     'src/widgets/venom_chart.c',
+    'src/widgets/venom_menubar.c',
+    'src/widgets/venom_toolbar.c',
+    'src/widgets/venom_titlebar.c',
 )
 
 state_sources = files(

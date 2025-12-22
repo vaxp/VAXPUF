@@ -60,6 +60,11 @@ static void x11_flush(VenomDisplay* display);
 static VenomResultPtr x11_create_window(VenomDisplay* display, const char* title,
                                          VenomI32 x, VenomI32 y,
                                          VenomU32 width, VenomU32 height);
+static VenomResultPtr x11_create_window_typed(VenomDisplay* display,
+                                               VenomWindowType type,
+                                               VenomWindowPosition position,
+                                               const char* title,
+                                               VenomU32 width, VenomU32 height);
 
 /* ============================================================================
  * VTABLE
@@ -74,6 +79,7 @@ static const VenomDisplayOps x11_display_ops = {
     .wait_event = x11_wait_event,
     .flush = x11_flush,
     .create_window = x11_create_window,
+    .create_window_typed = x11_create_window_typed,
 };
 
 /* ============================================================================
@@ -432,6 +438,194 @@ static VenomResultPtr x11_create_window(VenomDisplay* display, const char* title
     XFlush(d->xdisplay);
     
     /* Return the X window as pointer (we'll wrap this properly later) */
+    return VENOM_OK_PTR((void*)(uintptr_t)xwindow);
+}
+
+static VenomResultPtr x11_create_window_typed(VenomDisplay* display,
+                                               VenomWindowType type,
+                                               VenomWindowPosition position,
+                                               const char* title,
+                                               VenomU32 width, VenomU32 height) {
+    VenomX11Display* d = (VenomX11Display*)display;
+    
+    if (d->window_count >= 64) {
+        return VENOM_ERR_PTR(VENOM_ERROR_OUT_OF_MEMORY);
+    }
+    
+    /* Get screen dimensions */
+    int screen_width = DisplayWidth(d->xdisplay, d->default_screen);
+    int screen_height = DisplayHeight(d->xdisplay, d->default_screen);
+    
+    /* Calculate position and size based on type/position */
+    VenomI32 x = 0, y = 0;
+    VenomBool override_redirect = VENOM_FALSE;
+    
+    switch (position) {
+        case VENOM_POSITION_CENTER:
+            x = (screen_width - (int)width) / 2;
+            y = (screen_height - (int)height) / 2;
+            break;
+        case VENOM_POSITION_TOP:
+            x = 0;
+            y = 0;
+            width = screen_width;
+            break;
+        case VENOM_POSITION_BOTTOM:
+            x = 0;
+            y = screen_height - height;
+            width = screen_width;
+            break;
+        case VENOM_POSITION_FULLSCREEN:
+            x = 0;
+            y = 0;
+            width = screen_width;
+            height = screen_height;
+            break;
+        default:
+            x = 0;
+            y = 0;
+            break;
+    }
+    
+    /* Special handling for window types */
+    if (type == VENOM_WINDOW_PANEL) {
+        override_redirect = VENOM_TRUE;
+        y = 0;
+        width = screen_width;
+    } else if (type == VENOM_WINDOW_DOCK) {
+        y = screen_height - height;
+        width = screen_width;
+    } else if (type == VENOM_WINDOW_POPUP) {
+        override_redirect = VENOM_TRUE;
+        /* Position popup at top-right, below panel (38px) */
+        x = screen_width - (int)width - 10;
+        y = 38 + 8;  /* Below panel height + padding */
+    } else if (type == VENOM_WINDOW_LAUNCHER) {
+        override_redirect = VENOM_TRUE;
+        x = 0;
+        y = 0;
+        width = screen_width;
+        height = screen_height;
+    }
+    
+    /* Create window with attributes */
+    XSetWindowAttributes swa = {0};
+    swa.event_mask = ExposureMask | StructureNotifyMask | FocusChangeMask |
+                     KeyPressMask | KeyReleaseMask |
+                     ButtonPressMask | ButtonReleaseMask |
+                     PointerMotionMask | EnterWindowMask | LeaveWindowMask;
+    swa.override_redirect = override_redirect ? True : False;
+    swa.background_pixel = BlackPixel(d->xdisplay, d->default_screen);
+    
+    unsigned long mask = CWEventMask | CWBackPixel;
+    if (override_redirect) {
+        mask |= CWOverrideRedirect;
+    }
+    
+    Window xwindow = XCreateWindow(
+        d->xdisplay,
+        d->root_window,
+        x, y,
+        width, height,
+        0,
+        CopyFromParent,
+        InputOutput,
+        CopyFromParent,
+        mask,
+        &swa
+    );
+    
+    if (xwindow == 0) {
+        return VENOM_ERR_PTR(VENOM_ERROR_WINDOW_CREATE);
+    }
+    
+    /* Set window title */
+    if (title) {
+        XChangeProperty(d->xdisplay, xwindow, d->net_wm_name, d->utf8_string,
+                        8, PropModeReplace, (unsigned char*)title, strlen(title));
+        XStoreName(d->xdisplay, xwindow, title);
+    }
+    
+    /* Set EWMH window type */
+    Atom type_atom = XInternAtom(d->xdisplay, "_NET_WM_WINDOW_TYPE", False);
+    Atom wm_type;
+    
+    switch (type) {
+        case VENOM_WINDOW_PANEL:
+        case VENOM_WINDOW_DOCK:
+            wm_type = XInternAtom(d->xdisplay, "_NET_WM_WINDOW_TYPE_DOCK", False);
+            break;
+        case VENOM_WINDOW_POPUP:
+            wm_type = XInternAtom(d->xdisplay, "_NET_WM_WINDOW_TYPE_POPUP_MENU", False);
+            break;
+        case VENOM_WINDOW_LAUNCHER:
+            wm_type = XInternAtom(d->xdisplay, "_NET_WM_WINDOW_TYPE_SPLASH", False);
+            break;
+        case VENOM_WINDOW_DESKTOP:
+            wm_type = XInternAtom(d->xdisplay, "_NET_WM_WINDOW_TYPE_DESKTOP", False);
+            break;
+        default:
+            wm_type = XInternAtom(d->xdisplay, "_NET_WM_WINDOW_TYPE_NORMAL", False);
+            break;
+    }
+    XChangeProperty(d->xdisplay, xwindow, type_atom, XA_ATOM, 32,
+                    PropModeReplace, (unsigned char*)&wm_type, 1);
+    
+    /* Set strut for panels/docks */
+    if (type == VENOM_WINDOW_PANEL || type == VENOM_WINDOW_DOCK) {
+        Atom strut_atom = XInternAtom(d->xdisplay, "_NET_WM_STRUT_PARTIAL", False);
+        long strut[12] = {0};
+        
+        if (type == VENOM_WINDOW_PANEL) {
+            /* Top strut */
+            strut[2] = height;              /* top */
+            strut[8] = 0;                   /* top_start_x */
+            strut[9] = screen_width - 1;    /* top_end_x */
+        } else {
+            /* Bottom strut */
+            strut[3] = height;              /* bottom */
+            strut[10] = 0;                  /* bottom_start_x */
+            strut[11] = screen_width - 1;   /* bottom_end_x */
+        }
+        
+        XChangeProperty(d->xdisplay, xwindow, strut_atom, XA_CARDINAL, 32,
+                        PropModeReplace, (unsigned char*)strut, 12);
+    }
+    
+    /* Set always on top for panels */
+    if (type == VENOM_WINDOW_PANEL || type == VENOM_WINDOW_DOCK || 
+        type == VENOM_WINDOW_LAUNCHER) {
+        Atom state_atom = XInternAtom(d->xdisplay, "_NET_WM_STATE", False);
+        Atom above_atom = XInternAtom(d->xdisplay, "_NET_WM_STATE_ABOVE", False);
+        XChangeProperty(d->xdisplay, xwindow, state_atom, XA_ATOM, 32,
+                        PropModeReplace, (unsigned char*)&above_atom, 1);
+    }
+    
+    /* Register for WM_DELETE_WINDOW */
+    XSetWMProtocols(d->xdisplay, xwindow, &d->wm_delete_window, 1);
+    
+    /* Register in tracking array */
+    VenomU32 id = ++d->next_window_id;
+    d->windows[d->window_count].xwindow = xwindow;
+    d->windows[d->window_count].id = id;
+    
+    /* Create XIC if XIM available */
+    if (d->xim) {
+        d->windows[d->window_count].xic = XCreateIC(d->xim,
+            XNInputStyle, XIMPreeditNothing | XIMStatusNothing,
+            XNClientWindow, xwindow,
+            XNFocusWindow, xwindow,
+            NULL);
+    } else {
+        d->windows[d->window_count].xic = NULL;
+    }
+    d->window_count++;
+    
+    /* Map window */
+    XMapWindow(d->xdisplay, xwindow);
+    XRaiseWindow(d->xdisplay, xwindow);
+    XFlush(d->xdisplay);
+    
     return VENOM_OK_PTR((void*)(uintptr_t)xwindow);
 }
 

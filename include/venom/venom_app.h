@@ -44,6 +44,8 @@ typedef struct VenomAppConfig {
     void* user_data;            /* User data passed to build function */
     VenomBool resizable;        /* Allow window resizing */
     VenomBool debug;            /* Enable debug output */
+    VenomWindowType window_type;     /* Window type (default: NORMAL) */
+    VenomWindowPosition position;    /* Window position hint */
 } VenomAppConfig;
 
 /**
@@ -81,6 +83,45 @@ int venom_run_app(const VenomAppConfig* config);
  */
 #define VENOM_APP(...) \
     venom_run_app(&(VenomAppConfig){ __VA_ARGS__ })
+
+/**
+ * @brief Panel app macro - creates a top dock window
+ */
+#define VENOM_PANEL_APP(...) \
+    venom_run_app(&(VenomAppConfig){ \
+        .window_type = VENOM_WINDOW_PANEL, \
+        .position = VENOM_POSITION_TOP, \
+        __VA_ARGS__ \
+    })
+
+/**
+ * @brief Dock app macro - creates a bottom dock window
+ */
+#define VENOM_DOCK_APP(...) \
+    venom_run_app(&(VenomAppConfig){ \
+        .window_type = VENOM_WINDOW_DOCK, \
+        .position = VENOM_POSITION_BOTTOM, \
+        __VA_ARGS__ \
+    })
+
+/**
+ * @brief Popup app macro - creates a popup window (control center, etc.)
+ */
+#define VENOM_POPUP_APP(...) \
+    venom_run_app(&(VenomAppConfig){ \
+        .window_type = VENOM_WINDOW_POPUP, \
+        __VA_ARGS__ \
+    })
+
+/**
+ * @brief Launcher app macro - creates a fullscreen overlay
+ */
+#define VENOM_LAUNCHER_APP(...) \
+    venom_run_app(&(VenomAppConfig){ \
+        .window_type = VENOM_WINDOW_LAUNCHER, \
+        .position = VENOM_POSITION_FULLSCREEN, \
+        __VA_ARGS__ \
+    })
 
 /* ============================================================================
  * WIDGET BUILDER MACROS

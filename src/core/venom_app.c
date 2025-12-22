@@ -253,7 +253,13 @@ VenomWidget* _venom_row_build(const VenomContainerConfig* config) {
         venom_container_set_gap(container, config->gap);
     }
     venom_container_set_justify(container, config->justify);
-    venom_container_set_align(container, config->align);
+    
+    /* Default row align to STRETCH so children fill cross-axis */
+    VenomAlign align = config->align;
+    if (align == VENOM_ALIGN_START && config->align == 0) {
+        align = VENOM_ALIGN_STRETCH;  /* Better default for row */
+    }
+    venom_container_set_align(container, align);
     
     if (config->background.a > 0) {
         venom_container_set_background(container, config->background);
@@ -389,10 +395,19 @@ int venom_run_app(const VenomAppConfig* config) {
     g_app.display = (VenomDisplay*)display_result.value;
     VenomX11DisplayInternal* x11 = (VenomX11DisplayInternal*)g_app.display;
     
-    /* Create window */
-    VenomResultPtr win_result = g_app.display->ops->create_window(
-        g_app.display, title, 100, 100, width, height
-    );
+    /* Create window - use typed if special window type */
+    VenomResultPtr win_result;
+    if (config->window_type != VENOM_WINDOW_NORMAL && 
+        g_app.display->ops->create_window_typed) {
+        win_result = g_app.display->ops->create_window_typed(
+            g_app.display, config->window_type, config->position,
+            title, width, height
+        );
+    } else {
+        win_result = g_app.display->ops->create_window(
+            g_app.display, title, 100, 100, width, height
+        );
+    }
     if (!win_result.ok) {
         fprintf(stderr, "VENOMUI: Failed to create window: %s\n", 
                 venom_error_string(win_result.error));
@@ -400,6 +415,22 @@ int venom_run_app(const VenomAppConfig* config) {
         return 1;
     }
     Window xwindow = (Window)(uintptr_t)win_result.value;
+    
+    /* Get actual window size (typed windows may have different size) */
+    if (config->window_type != VENOM_WINDOW_NORMAL) {
+        /* Wait for window to be mapped and get actual size */
+        XSync(x11->xdisplay, False);
+        XWindowAttributes attrs;
+        if (XGetWindowAttributes(x11->xdisplay, xwindow, &attrs)) {
+            width = (VenomU32)attrs.width;
+            height = (VenomU32)attrs.height;
+            g_app.window_width = width;
+            g_app.window_height = height;
+            if (config->debug) {
+                printf("VENOMUI: Actual window size: %ux%u\n", width, height);
+            }
+        }
+    }
     
     /* Create canvas */
     Visual* visual = DefaultVisual(x11->xdisplay, x11->default_screen);
