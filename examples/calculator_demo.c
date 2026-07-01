@@ -193,24 +193,6 @@ static VaxpWidget* build_ui(void* ud) {
         .background = bg_color,
         .children = VAXP_CHILDREN(
             
-            /* Custom Top Bar */
-            vaxp_row(
-                .padding = (VaxpInsets){8, 10, 8, 25}, /* vertical: 8, horizontal: 10 + 15 left padding for title */
-                .justify = VAXP_JUSTIFY_SPACE_BETWEEN,
-                .align = VAXP_ALIGN_CENTER,
-                .children = VAXP_CHILDREN(
-                    vaxp_text("Calculator", .color = VAXP_COLOR_WHITE, .size = 20),
-                    vaxp_row(
-                        .gap = 8,
-                        .children = VAXP_CHILDREN(
-                            vaxp_col(.padding = (VaxpInsets){7,7,7,7}, .background = vaxp_color_rgb(255, 189, 46), .corner_radius = 7),
-                            vaxp_col(.padding = (VaxpInsets){7,7,7,7}, .background = vaxp_color_rgb(40, 200, 64), .corner_radius = 7),
-                            vaxp_col(.padding = (VaxpInsets){7,7,7,7}, .background = vaxp_color_rgb(255, 95, 87), .corner_radius = 7)
-                        )
-                    )
-                )
-            ),
-            
             /* =========================================================
              * 1. منطقة الشاشة (Display Area)
              * HOW TO ADJUST DISPLAY HEIGHT (كيفية تعديل ارتفاع الشاشة):
@@ -306,6 +288,7 @@ int main(void) {
         .width = 405,
         .height = 700,
         .background = vaxp_color_rgba(0, 0, 0, 100), /* Scaffold background opacity */
+        .decoration = VAXP_DECORATION_DARK,          /* Use native dark decoration bar */
         .build = build_ui
     );
     
