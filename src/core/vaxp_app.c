@@ -134,94 +134,103 @@ static VaxpWidget* _dec_make_dot(VaxpColor color, VaxpColor hover_color,
 }
 
 /**
- * @brief Wraps user_root with a macOS-style decoration bar.
+ * @brief Wraps user_root with a decoration bar that exactly matches
+ *        the calculator_demo title bar style:
  *
- *  ┌────────────────────────────────────────────┐
- *  │ ● ● ●        Window Title                 │  ← 34 px bar
- *  ├────────────────────────────────────────────┤
- *  │            user content (flex)             │
- *  └────────────────────────────────────────────┘
+ *   padding={8, 10, 8, 25}  JUSTIFY_SPACE_BETWEEN  ALIGN_CENTER
+ *   ┌───────────────────────────────────────────────────┐
+ *   │  Window Title               [yellow][green][red]  │
+ *   ├───────────────────────────────────────────────────┤
+ *   │                user content (flex)                │
+ *   └───────────────────────────────────────────────────┘
  *
- * Ownership: user_root ref is CONSUMED; returns a new widget (ref=1).
+ * - No separate bar background (inherits window background → blends in).
+ * - Dots are VaxpButton for hover + click support, locked 14×14.
+ * - Order matches calculator_demo: yellow | green | red (left → right).
+ * - DARK style: white title text.  DEFAULT/LIGHT: dark title text.
  *
- * Important: vaxp_widget_add_child() refs the child internally,
- * so we call vaxp_unref() on each child AFTER adding it (not before).
+ * Ownership: user_root ref CONSUMED; returns new widget (ref=1).
+ * vaxp_widget_add_child() refs internally → call vaxp_unref() after each add.
  */
 static VaxpWidget* _vaxp_build_decorated_root(VaxpWidget* user_root,
                                                const char* title,
                                                VaxpDecorationStyle style) {
     if (!user_root || style == VAXP_DECORATION_NONE) return user_root;
 
-    /* ── Colors ──────────────────────────────────────────── */
-    VaxpColor dot_red    = vaxp_color_rgb(255, 95,  87);
-    VaxpColor dot_yellow = vaxp_color_rgb(255, 189, 46);
-    VaxpColor dot_green  = vaxp_color_rgb(40,  200, 64);
-    VaxpColor dot_red_h    = vaxp_color_rgb(235, 65,  55);
-    VaxpColor dot_yellow_h = vaxp_color_rgb(235, 165, 20);
-    VaxpColor dot_green_h  = vaxp_color_rgb(15,  175, 40);
+    /* ── Title color (no bar background — inherits window bg) ───────── */
+    VaxpColor title_col = (style == VAXP_DECORATION_DARK)
+        ? vaxp_color_rgb(255, 255, 255)   /* white text on dark bg  */
+        : vaxp_color_rgb(255, 255, 255);  /* white text (matches calculator) */
 
-    VaxpColor bar_bg, title_col;
-    if (style == VAXP_DECORATION_DARK) {
-        bar_bg    = vaxp_color_rgba(28,  28,  30,  245);
-        title_col = vaxp_color_rgba(235, 235, 245, 200);
-    } else {
-        bar_bg    = vaxp_color_rgba(242, 242, 247, 245);
-        title_col = vaxp_color_rgba(30,  30,  30,  210);
-    }
+    /* ── Three dots — same colors/order as calculator_demo ─────────── */
+    /*    calculator order: yellow, green, red  (left → right)          */
+    VaxpWidget* dot_y = _dec_make_dot(
+        vaxp_color_rgb(255, 189, 46),
+        vaxp_color_rgb(235, 165, 20),
+        _dec_minimize_cb
+    );
+    VaxpWidget* dot_g = _dec_make_dot(
+        vaxp_color_rgb(40,  200, 64),
+        vaxp_color_rgb(15,  175, 40),
+        _dec_maximize_cb
+    );
+    VaxpWidget* dot_r = _dec_make_dot(
+        vaxp_color_rgb(255, 95,  87),
+        vaxp_color_rgb(235, 65,  55),
+        _dec_close_cb
+    );
 
-    /* ── Traffic-light dots ───────────────────────────────── */
-    VaxpWidget* dot_r = _dec_make_dot(dot_red,    dot_red_h,    _dec_close_cb);
-    VaxpWidget* dot_y = _dec_make_dot(dot_yellow, dot_yellow_h, _dec_minimize_cb);
-    VaxpWidget* dot_g = _dec_make_dot(dot_green,  dot_green_h,  _dec_maximize_cb);
-
-    /* Dots row: gap=8, ALIGN_CENTER so dots stay circular */
+    /* Dots row: gap=8, ALIGN_CENTER so dots don't stretch */
     VaxpResultPtr dr_res = vaxp_container_create_row();
     VaxpWidget* dots_row = NULL;
     if (dr_res.ok) {
         VaxpContainer* dr = (VaxpContainer*)dr_res.value;
         vaxp_container_set_gap(dr, 8);
         vaxp_container_set_align(dr, VAXP_ALIGN_CENTER);
-        if (dot_r) { vaxp_widget_add_child((VaxpWidget*)dr, dot_r); vaxp_unref(dot_r); }
-        if (dot_y) { vaxp_widget_add_child((VaxpWidget*)dr, dot_y); vaxp_unref(dot_y); }
-        if (dot_g) { vaxp_widget_add_child((VaxpWidget*)dr, dot_g); vaxp_unref(dot_g); }
         ((VaxpWidget*)dr)->layout.flex_grow   = 0;
         ((VaxpWidget*)dr)->layout.flex_shrink = 0;
         ((VaxpWidget*)dr)->layout.align_self  = VAXP_ALIGN_CENTER;
+        if (dot_y) { vaxp_widget_add_child((VaxpWidget*)dr, dot_y); vaxp_unref(dot_y); }
+        if (dot_g) { vaxp_widget_add_child((VaxpWidget*)dr, dot_g); vaxp_unref(dot_g); }
+        if (dot_r) { vaxp_widget_add_child((VaxpWidget*)dr, dot_r); vaxp_unref(dot_r); }
         dots_row = (VaxpWidget*)dr;
     }
 
-    /* Title (centered via two flex spacers) */
-    VaxpWidget* spacer1   = vaxp_spacer();
-    VaxpWidget* spacer2   = vaxp_spacer();
+    /* ── Title label (left side) ────────────────────────────────────── */
     VaxpWidget* title_lbl = _vaxp_text_build(
         title ? title : "",
-        &(VaxpTextConfig){ .size = 13, .color = title_col }
+        &(VaxpTextConfig){ .size = 20, .color = title_col }
     );
-    if (title_lbl) title_lbl->layout.align_self = VAXP_ALIGN_CENTER;
+    if (title_lbl) {
+        title_lbl->layout.align_self  = VAXP_ALIGN_CENTER;
+        title_lbl->layout.flex_grow   = 0;
+        title_lbl->layout.flex_shrink = 0;
+    }
 
-    /* Full bar row */
+    /* ── Bar row: same as calculator_demo ───────────────────────────── */
+    /*    padding={8,10,8,25}  JUSTIFY_SPACE_BETWEEN  ALIGN_CENTER      */
+    /*    No background → inherits from outer column / window bg.       */
     VaxpResultPtr br_res = vaxp_container_create_row();
     VaxpWidget* dec_row = NULL;
     if (br_res.ok) {
         VaxpContainer* br = (VaxpContainer*)br_res.value;
+        vaxp_container_set_justify(br, VAXP_JUSTIFY_SPACE_BETWEEN);
         vaxp_container_set_align(br, VAXP_ALIGN_CENTER);
-        vaxp_container_set_background(br, bar_bg);
-        ((VaxpWidget*)br)->layout.padding    = (VaxpInsets){10, 14, 10, 14};
-        ((VaxpWidget*)br)->layout.min_height = 34;
+        /* No vaxp_container_set_background → transparent, matches calculator */
+        ((VaxpWidget*)br)->layout.padding    = (VaxpInsets){8, 10, 8, 25};
         ((VaxpWidget*)br)->layout.flex_grow  = 0;
         ((VaxpWidget*)br)->layout.flex_shrink = 0;
-        if (dots_row)  { vaxp_widget_add_child((VaxpWidget*)br, dots_row);  vaxp_unref(dots_row);  }
-        if (spacer1)   { vaxp_widget_add_child((VaxpWidget*)br, spacer1);   vaxp_unref(spacer1);   }
+        /* Left: title  |  Right: dots */
         if (title_lbl) { vaxp_widget_add_child((VaxpWidget*)br, title_lbl); vaxp_unref(title_lbl); }
-        if (spacer2)   { vaxp_widget_add_child((VaxpWidget*)br, spacer2);   vaxp_unref(spacer2);   }
+        if (dots_row)  { vaxp_widget_add_child((VaxpWidget*)br, dots_row);  vaxp_unref(dots_row);  }
         dec_row = (VaxpWidget*)br;
     }
 
-    /* User content fills remaining height */
+    /* ── User content fills remaining height ────────────────────────── */
     user_root->layout.flex_grow   = 1;
     user_root->layout.flex_shrink = 1;
 
-    /* Outer column: [bar | content] */
+    /* ── Outer column: [bar | content] ─────────────────────────────── */
     VaxpResultPtr oc_res = vaxp_container_create_column();
     VaxpWidget* outer = NULL;
     if (oc_res.ok) {
