@@ -47,6 +47,9 @@ typedef struct VaxpImageData {
     /* Cairo surface for efficient rendering */
     void* cairo_surface;        /* cairo_surface_t* */
     
+    /* OpenGL texture handle */
+    VaxpU32 gl_texture;         
+    
 } VaxpImageData;
 
 /* ============================================================================

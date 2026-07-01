@@ -6,6 +6,7 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include "vaxp/widgets/vaxp_context_menu.h"
+#include "vaxp/widgets/vaxp_image.h"
 
 #define MAX_TERM_COLS 512
 #define MAX_TERM_ROWS 256
@@ -14,6 +15,52 @@ static void term_init(VaxpWidget* self);
 static void term_destroy(VaxpWidget* self);
 static void term_draw(VaxpWidget* self, VaxpCanvas* canvas);
 static VaxpBool term_on_event(VaxpWidget* self, const VaxpEvent* event);
+
+/* Simple Base64 Decoder */
+static const int b64_index[256] = {
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 62, 63, 62, 62, 63,
+   52, 53, 54, 55, 56, 57, 58, 59, 60, 61,  0,  0,  0,  0,  0,  0,
+    0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+   15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,  0,  0,  0,  0, 63,
+    0, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+   41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+};
+
+static unsigned char* base64_decode(const char* data, size_t input_length, size_t* output_length) {
+    if (input_length == 0) { *output_length = 0; return NULL; }
+    if (input_length % 4 != 0) { *output_length = 0; return NULL; }
+    size_t output_len = input_length / 4 * 3;
+    if (data[input_length - 1] == '=') output_len--;
+    if (data[input_length - 2] == '=') output_len--;
+    
+    unsigned char* decoded = (unsigned char*)malloc(output_len);
+    if (!decoded) return NULL;
+    
+    for (size_t i = 0, j = 0; i < input_length;) {
+        uint32_t a = data[i] == '=' ? 0 & i++ : b64_index[(unsigned char)data[i++]];
+        uint32_t b = data[i] == '=' ? 0 & i++ : b64_index[(unsigned char)data[i++]];
+        uint32_t c = data[i] == '=' ? 0 & i++ : b64_index[(unsigned char)data[i++]];
+        uint32_t d = data[i] == '=' ? 0 & i++ : b64_index[(unsigned char)data[i++]];
+        
+        uint32_t triple = (a << 18) + (b << 12) + (c << 6) + d;
+        if (j < output_len) decoded[j++] = (triple >> 16) & 0xFF;
+        if (j < output_len) decoded[j++] = (triple >> 8) & 0xFF;
+        if (j < output_len) decoded[j++] = (triple) & 0xFF;
+    }
+    
+    *output_length = output_len;
+    return decoded;
+}
 
 const VaxpWidgetClass vaxp_terminal_class = {
     .class_name = "VaxpTerminal",
@@ -61,6 +108,11 @@ static void term_init(VaxpWidget* self) {
     term->sel_end_x = -1; term->sel_end_y = -1;
     term->context_menu = NULL;
     
+    term->ansi_payload = NULL;
+    term->ansi_payload_len = 0;
+    term->ansi_payload_cap = 0;
+    term->images = NULL;
+    
     self->focusable = VAXP_TRUE;
 }
 
@@ -69,6 +121,15 @@ static void term_destroy(VaxpWidget* self) {
     if (term->ring_buffer) free(term->ring_buffer);
     if (term->alt_buffer) free(term->alt_buffer);
     if (term->context_menu) vaxp_unref(term->context_menu);
+    if (term->ansi_payload) free(term->ansi_payload);
+    
+    TermImage* img = term->images;
+    while (img) {
+        TermImage* next = img->next;
+        if (img->image) vaxp_unref(img->image);
+        free(img);
+        img = next;
+    }
 }
 
 void vaxp_terminal_init_grid(VaxpTerminal* term, int cols, int rows) {
@@ -131,6 +192,20 @@ static void term_scroll_up(VaxpTerminal* term) {
     if (term->sel_start_y >= 0) term->sel_start_y--;
     if (term->sel_end_y >= 0) term->sel_end_y--;
     
+    /* Shift images up */
+    TermImage** img_ptr = &term->images;
+    while (*img_ptr) {
+        TermImage* img = *img_ptr;
+        img->y--;
+        if (img->y + img->height_cells <= -term->max_rows) {
+            *img_ptr = img->next;
+            if (img->image) vaxp_unref(img->image);
+            free(img);
+        } else {
+            img_ptr = &img->next;
+        }
+    }
+    
     /* Clear new bottom line */
     int bottom_y = (term->screen_top_row + term->rows - 1) % term->max_rows;
     for (int x = 0; x < term->cols; x++) {
@@ -171,6 +246,20 @@ static void term_scroll_down(VaxpTerminal* term) {
     
     if (term->sel_start_y >= 0) term->sel_start_y++;
     if (term->sel_end_y >= 0) term->sel_end_y++;
+    
+    /* Shift images down */
+    TermImage** img_ptr = &term->images;
+    while (*img_ptr) {
+        TermImage* img = *img_ptr;
+        img->y++;
+        if (img->y >= term->max_rows) {
+            *img_ptr = img->next;
+            if (img->image) vaxp_unref(img->image);
+            free(img);
+        } else {
+            img_ptr = &img->next;
+        }
+    }
     
     /* Clear new top line */
     int top_y = term->screen_top_row;
@@ -344,6 +433,93 @@ static void process_sgr(VaxpTerminal* term) {
     }
 }
 
+static void process_kitty_image(VaxpTerminal* term, const char* payload, int len) {
+    /* Payload starts with 'G' or 'G ' for Kitty Image Protocol */
+    if (len < 2 || payload[0] != 'G') return;
+    
+    const char* p = payload + 1;
+    if (*p == ' ') p++;
+    
+    /* Parse key=value pairs up to ';' */
+    int format = 0;
+    int a = 0;
+    int id = 0;
+    
+    while (*p && *p != ';') {
+        char key = *p++;
+        if (*p == '=') p++;
+        int val = 0;
+        while (*p >= '0' && *p <= '9') {
+            val = val * 10 + (*p - '0');
+            p++;
+        }
+        if (key == 'a') a = val;
+        else if (key == 'f') format = val;
+        else if (key == 'i') id = val;
+        
+        if (*p == ',') p++;
+    }
+    
+    if (*p == ';') p++;
+    
+    /* Decode base64 */
+    size_t out_len = 0;
+    size_t input_len = strlen(p);
+    fprintf(stderr, "VAXP_TERM DEBUG: process_kitty_image format=%d a=%d id=%d base64_len=%zu\n", format, a, id, input_len);
+    
+    unsigned char* decoded = base64_decode(p, input_len, &out_len);
+    if (!decoded) {
+        fprintf(stderr, "VAXP_TERM DEBUG: base64_decode failed (len mod 4 = %zu)\n", input_len % 4);
+        return;
+    }
+    
+    if (decoded && out_len > 0) {
+        fprintf(stderr, "VAXP_TERM DEBUG: base64_decode success, out_len=%zu\n", out_len);
+        /* Only support PNG (f=100) and RGB (f=24) / RGBA (f=32) for now */
+        if (format == 100 || format == 24 || format == 32) {
+            char tmp_path[256];
+            snprintf(tmp_path, sizeof(tmp_path), "/tmp/vaxp_img_%d.png", id);
+            FILE* f = fopen(tmp_path, "wb");
+            if (f) {
+                fwrite(decoded, 1, out_len, f);
+                fclose(f);
+                fprintf(stderr, "VAXP_TERM DEBUG: Wrote decoded data to %s\n", tmp_path);
+                
+                VaxpResultPtr res = vaxp_image_load_file(tmp_path);
+                if (res.ok && res.value) {
+                    VaxpImageData* img_data = (VaxpImageData*)res.value;
+                    VaxpU32 w = 0, h = 0;
+                    vaxp_image_get_size(img_data, &w, &h);
+                    fprintf(stderr, "VAXP_TERM DEBUG: Image loaded. size=%ux%u\n", w, h);
+                    
+                    TermImage* timg = malloc(sizeof(TermImage));
+                    timg->id = id;
+                    timg->image = (VaxpImage*)img_data;
+                    timg->x = term->cursor_x;
+                    timg->y = term->cursor_y; /* Relative to current screen top */
+                    
+                    /* Calculate size in cells */
+                    timg->width_cells = (int)(w / term->char_width) + 1;
+                    timg->height_cells = (int)(h / term->char_height) + 1;
+                    fprintf(stderr, "VAXP_TERM DEBUG: Added image to list at %d,%d (%dx%d cells)\n", timg->x, timg->y, timg->width_cells, timg->height_cells);
+                    
+                    timg->next = term->images;
+                    term->images = timg;
+                } else {
+                    fprintf(stderr, "VAXP_TERM DEBUG: vaxp_image_load_file failed! res.ok=%d error=%d\n", res.ok, res.error);
+                }
+                unlink(tmp_path);
+            } else {
+                fprintf(stderr, "VAXP_TERM DEBUG: Failed to open %s for writing\n", tmp_path);
+            }
+        } else {
+            fprintf(stderr, "VAXP_TERM DEBUG: Unsupported format %d\n", format);
+        }
+        free(decoded);
+    }
+
+}
+
 void vaxp_terminal_write(VaxpTerminal* term, const char* data, int len) {
     for (int i = 0; i < len; i++) {
         char c = data[i];
@@ -365,6 +541,12 @@ void vaxp_terminal_write(VaxpTerminal* term, const char* data, int len) {
                 term->ansi_state = 3; /* OSC */
                 term->ansi_param_idx = 0;
                 term->ansi_current_param[0] = '\0';
+            } else if (c == '_') {
+                term->ansi_state = 5; /* APC */
+                term->ansi_payload_len = 0;
+            } else if (c == 'P') {
+                term->ansi_state = 6; /* DCS */
+                term->ansi_payload_len = 0;
             } else if (c == '(' || c == ')') {
                 term->ansi_state = 4; /* Charset */
             } else if (c == '7') {
@@ -632,6 +814,45 @@ void vaxp_terminal_write(VaxpTerminal* term, const char* data, int len) {
                     term->ansi_current_param[term->ansi_param_idx++] = c;
                 }
             }
+        } else if (term->ansi_state == 5) { /* APC (Kitty) */
+            if (c == '\a' || c == '\x07') {
+                term->ansi_state = 0;
+                if (term->ansi_payload_len > 0) {
+                    process_kitty_image(term, term->ansi_payload, term->ansi_payload_len);
+                }
+                term->ansi_payload_len = 0;
+            } else if (c == '\x1b') {
+                term->ansi_state = 51;
+            } else {
+                if (term->ansi_payload_len >= term->ansi_payload_cap - 1) {
+                    term->ansi_payload_cap = term->ansi_payload_cap == 0 ? 1024 : term->ansi_payload_cap * 2;
+                    term->ansi_payload = realloc(term->ansi_payload, term->ansi_payload_cap);
+                }
+                if (term->ansi_payload) {
+                    term->ansi_payload[term->ansi_payload_len++] = c;
+                    term->ansi_payload[term->ansi_payload_len] = '\0';
+                }
+            }
+        } else if (term->ansi_state == 51) {
+            if (c == '\\') {
+                term->ansi_state = 0;
+                if (term->ansi_payload_len > 0) {
+                    process_kitty_image(term, term->ansi_payload, term->ansi_payload_len);
+                }
+                term->ansi_payload_len = 0;
+            } else {
+                /* Not a terminator, add ESC and c to payload */
+                if (term->ansi_payload_len + 1 >= term->ansi_payload_cap - 1) {
+                    term->ansi_payload_cap = term->ansi_payload_cap == 0 ? 1024 : term->ansi_payload_cap * 2;
+                    term->ansi_payload = realloc(term->ansi_payload, term->ansi_payload_cap);
+                }
+                if (term->ansi_payload) {
+                    term->ansi_payload[term->ansi_payload_len++] = '\x1b';
+                    term->ansi_payload[term->ansi_payload_len++] = c;
+                    term->ansi_payload[term->ansi_payload_len] = '\0';
+                }
+                term->ansi_state = 5;
+            }
         }
     }
     vaxp_widget_invalidate((VaxpWidget*)term);
@@ -739,6 +960,15 @@ static void term_draw(VaxpWidget* self, VaxpCanvas* canvas) {
                     vaxp_canvas_draw_rect(canvas, (VaxpRectF){cx, cy + cell_h - 2, cell_w, 1}, &text_paint);
                 }
             }
+        }
+    }
+    /* Draw images */
+    for (TermImage* img = term->images; img != NULL; img = img->next) {
+        int view_y = img->y + term->scroll_offset;
+        if (view_y + img->height_cells > 0 && view_y < term->rows) {
+            float img_cx = img->x * cell_w;
+            float img_cy = view_y * cell_h;
+            vaxp_canvas_draw_image(canvas, img->image, img_cx, img_cy);
         }
     }
     

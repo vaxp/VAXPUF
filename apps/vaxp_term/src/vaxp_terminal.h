@@ -21,6 +21,16 @@ typedef struct {
     uint8_t flags;
 } TermCell;
 
+typedef struct TermImage {
+    uint32_t id;
+    VaxpImage* image;
+    int x; /* Column index */
+    int y; /* Row index relative to current screen top */
+    int width_cells;
+    int height_cells;
+    struct TermImage* next;
+} TermImage;
+
 struct VaxpTerminal {
     VaxpWidget base;
     
@@ -65,13 +75,19 @@ struct VaxpTerminal {
     int pty_fd;
     
     /* ANSI State Machine */
-    int ansi_state;       /* 0=NORMAL, 1=ESC, 2=CSI, 3=OSC */
+    int ansi_state;       /* 0=NORMAL, 1=ESC, 2=CSI, 3=OSC, 5=APC (Kitty), 6=DCS (Sixel) */
     VaxpBool ansi_is_private;
     int ansi_params[16];
     int ansi_param_count;
     char ansi_current_param[256]; /* Increased for window titles */
     int ansi_param_idx;
     VaxpBool use_acs;
+    
+    char* ansi_payload; /* For large payloads like Kitty images */
+    int ansi_payload_len;
+    int ansi_payload_cap;
+    
+    TermImage* images; /* Linked list of terminal images */
     
     /* Mouse & Selection */
     int mouse_reporting_mode; /* 0=off, 1000=normal, 1002=cell motion */

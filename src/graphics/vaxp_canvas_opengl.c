@@ -14,6 +14,7 @@
 #endif
 
 #include "vaxp/graphics/vaxp_canvas.h"
+#include "vaxp/widgets/vaxp_image.h"
 #include "vaxp/core/vaxp_memory.h"
 
 #include <X11/Xlib.h>
@@ -971,7 +972,32 @@ static void gl_canvas_draw_text(VaxpCanvas* canvas, const char* text, VaxpF32 x,
 }
 
 static void gl_canvas_draw_image(VaxpCanvas* canvas, const VaxpImage* image, VaxpF32 x, VaxpF32 y) {
-    (void)canvas; (void)image; (void)x; (void)y;
+    if (!image) return;
+    VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
+    VaxpImageData* img = (VaxpImageData*)image;
+    
+    if (img->gl_texture == 0) {
+        GLuint tex;
+        glGenTextures(1, &tex);
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        
+        /* Premultiplied BGRA data from Cairo to OpenGL */
+        /* Assuming Cairo uses BGRA format internally */
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img->width, img->height, 0, GL_BGRA, GL_UNSIGNED_BYTE, img->pixels);
+        img->gl_texture = tex;
+    }
+    
+    VaxpF32 w = img->width;
+    VaxpF32 h = img->height;
+    
+    VaxpF32 pts[8] = {x, y, x+w, y, x+w, y+h, x, y+h};
+    VaxpF32 uvs[8] = {0,0, 1,0, 1,1, 0,1};
+    
+    gl_batch_push_quad(c, 1.0f, 0.0f, 0.0f, 0.0f, pts, uvs, vaxp_color_rgba(255,255,255,255), img->gl_texture);
 }
 
 static void gl_canvas_draw_image_rect(VaxpCanvas* canvas, const VaxpImage* image,
