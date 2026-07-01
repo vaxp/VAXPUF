@@ -865,6 +865,9 @@ static void gl_canvas_draw_text(VaxpCanvas* canvas, const char* text, VaxpF32 x,
     VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
     if (!text || !*text) return;
     
+    float actual_font_size = font ? *(const float*)font : c->font_size;
+    if (actual_font_size <= 0) actual_font_size = 14.0f;
+    
     GLuint tex = 0;
     int tw = 0, th = 0;
     
@@ -873,7 +876,7 @@ static void gl_canvas_draw_text(VaxpCanvas* canvas, const char* text, VaxpF32 x,
         TextCacheEntry* e = &c->text_cache[i];
         if (e->color.r == paint->color.r && e->color.g == paint->color.g && 
             e->color.b == paint->color.b && e->color.a == paint->color.a &&
-            e->font_size == c->font_size && strcmp(e->text, text) == 0) {
+            e->font_size == actual_font_size && strcmp(e->text, text) == 0) {
             tex = e->texture;
             tw = e->width;
             th = e->height;
@@ -887,7 +890,7 @@ static void gl_canvas_draw_text(VaxpCanvas* canvas, const char* text, VaxpF32 x,
         PangoLayout* layout = pango_cairo_create_layout(cr);
         
         char font_desc_str[64];
-        snprintf(font_desc_str, sizeof(font_desc_str), "Noto Sans %f", c->font_size > 0 ? c->font_size : 14.0f);
+        snprintf(font_desc_str, sizeof(font_desc_str), "Noto Sans %f", actual_font_size);
         PangoFontDescription* desc = pango_font_description_from_string(font_desc_str);
         pango_layout_set_font_description(layout, desc);
         pango_font_description_free(desc);
@@ -950,8 +953,8 @@ static void gl_canvas_draw_text(VaxpCanvas* canvas, const char* text, VaxpF32 x,
         e->texture = tex;
         e->width = tw;
         e->height = th;
+        e->font_size = actual_font_size;
         e->color = paint->color;
-        e->font_size = c->font_size;
     }
     
     /* Adjust drawing Y so it matches Cairo's baseline behavior */

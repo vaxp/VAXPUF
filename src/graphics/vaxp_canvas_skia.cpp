@@ -206,10 +206,12 @@ static void skia_canvas_draw_text(VaxpCanvas* canvas, const char* text, VaxpF32 
                                    const VaxpFont* font, const VaxpPaint* paint) {
     VaxpSkiaCanvas* c = (VaxpSkiaCanvas*)canvas;
     SkPaint sk = vaxp_paint_to_sk(paint);
+    float actual_font_size = font ? *(const float*)font : 14.0f;
+    if (actual_font_size <= 0) actual_font_size = 14.0f;
     
     /* Use default font for now */
     SkFont skfont;
-    skfont.setSize(14.0f);  /* Default size */
+    skfont.setSize(actual_font_size);
     
     c->sk_canvas->drawString(text, x, y, skfont, sk);
 }

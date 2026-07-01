@@ -223,12 +223,12 @@ static VaxpWidget* build_ui(void* ud) {
                     .align = VAXP_ALIGN_END,
                     .padding = (VaxpInsets){24, 24, 24, 24},
                     .children = VAXP_CHILDREN(
-                        vaxp_text(" ", .size = 40, .color = vaxp_color_rgba(255, 255, 255, 255)),
+                        vaxp_text(" ", .size = 22, .color = vaxp_color_rgba(255, 255, 255, 255)),
                         /* 
                          * HOW TO ADJUST RESULT TEXT SIZE (حجم نص النتيجة أو الرقم):
                          * يمكنك تغيير الـ .size = 52 إلى أي رقم تريده لتكبير الرقم.
                          */
-                        vaxp_text(s->display, .size = 82, .color = VAXP_COLOR_WHITE)
+                        vaxp_text(s->display, .size = 42, .color = VAXP_COLOR_WHITE)
                     )
                 ), 2 /* <--- نسبة الارتفاع للشاشة (غيرها لتكبير أو تصغير المساحة) */
             ),

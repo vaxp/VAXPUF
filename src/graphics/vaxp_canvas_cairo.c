@@ -233,8 +233,12 @@ static void cairo_canvas_draw_text(VaxpCanvas* canvas, const char* text, VaxpF32
     /* Use Pango for proper international text rendering (Arabic, CJK, etc.) */
     PangoLayout* layout = pango_cairo_create_layout(c->cr);
     
-    /* Set font - use "Noto Sans" which has good Unicode coverage, fallback to Sans */
-    PangoFontDescription* desc = pango_font_description_from_string("Noto Sans 14");
+    float actual_font_size = font ? *(const float*)font : 14.0f;
+    if (actual_font_size <= 0) actual_font_size = 14.0f;
+    
+    char font_desc_str[64];
+    snprintf(font_desc_str, sizeof(font_desc_str), "Noto Sans %f", actual_font_size);
+    PangoFontDescription* desc = pango_font_description_from_string(font_desc_str);
     pango_layout_set_font_description(layout, desc);
     pango_font_description_free(desc);
     
