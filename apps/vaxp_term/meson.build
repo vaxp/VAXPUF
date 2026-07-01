@@ -1,7 +1,8 @@
 vaxp_term_sources = files(
     'src/main.c',
     'src/pty_handler.c',
-    'src/vaxp_terminal.c'
+    'src/vaxp_terminal.c',
+    'src/config_parser.c'
 )
 
 # find libutil for forkpty

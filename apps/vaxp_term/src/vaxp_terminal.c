@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "vaxp_terminal.h"
 #include <stdlib.h>
 #include <string.h>
@@ -924,7 +925,30 @@ static void term_draw(VaxpWidget* self, VaxpCanvas* canvas) {
         }
     }
     
+    char row_str[MAX_TERM_COLS + 1];
+    char match_mask[MAX_TERM_COLS];
+    
     for (int y = 0; y < term->rows; y++) {
+        memset(match_mask, 0, term->cols);
+        if (term->search_active && term->search_query_len > 0) {
+            /* Build row string for searching */
+            for (int x = 0; x < term->cols; x++) {
+                TermCell* cell = get_cell(term, x, y);
+                row_str[x] = (cell && cell->ch[0] != '\0') ? cell->ch[0] : ' ';
+            }
+            row_str[term->cols] = '\0';
+            
+            /* Case-insensitive search using strcasestr */
+            char* p = row_str;
+            while ((p = strcasestr(p, term->search_query)) != NULL) {
+                int idx = p - row_str;
+                for (int i = 0; i < term->search_query_len && (idx + i) < term->cols; i++) {
+                    match_mask[idx + i] = 1;
+                }
+                p += term->search_query_len;
+            }
+        }
+        
         for (int x = 0; x < term->cols; x++) {
             TermCell* cell = get_cell(term, x, y);
             if (!cell) continue;
@@ -941,6 +965,9 @@ static void term_draw(VaxpWidget* self, VaxpCanvas* canvas) {
             
             if (is_cell_selected(term, x, y)) {
                 c_bg = vaxp_color_rgba(50, 100, 200, 255);
+            } else if (match_mask[x]) {
+                c_bg = vaxp_color_rgba(255, 255, 0, 255);
+                c_fg = vaxp_color_rgba(0, 0, 0, 255);
             }
             
             if (c_bg.r != term->default_bg.r || c_bg.g != term->default_bg.g || 
@@ -972,11 +999,26 @@ static void term_draw(VaxpWidget* self, VaxpCanvas* canvas) {
         }
     }
     
-    if (term->cursor_visible && term->scroll_offset == 0 && vaxp_widget_has_state(self, VAXP_WIDGET_STATE_FOCUSED)) {
+    if (term->cursor_visible && term->scroll_offset == 0 && vaxp_widget_has_state(self, VAXP_WIDGET_STATE_FOCUSED) && !term->search_active) {
         float cx = term->cursor_x * cell_w;
         float cy = term->cursor_y * cell_h;
         VaxpPaint cursor_paint = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, 128));
         vaxp_canvas_draw_rect(canvas, (VaxpRectF){cx, cy, cell_w, cell_h}, &cursor_paint);
+    }
+    
+    if (term->search_active) {
+        /* Draw search bar at the bottom */
+        float bar_h = 30.0f;
+        VaxpRectF bar_rect = {0, b.height - bar_h, b.width, bar_h};
+        VaxpPaint bar_bg = vaxp_paint_fill(vaxp_color_rgba(40, 44, 52, 255));
+        vaxp_canvas_draw_rect(canvas, bar_rect, &bar_bg);
+        
+        char search_text[512];
+        snprintf(search_text, sizeof(search_text), "Search: %s_", term->search_query);
+        
+        VaxpFont font = {.family = "monospace", .size = term->font_size, .bold = VAXP_TRUE};
+        VaxpPaint text_paint = vaxp_paint_fill(vaxp_color_rgba(200, 220, 255, 255));
+        vaxp_canvas_draw_text(canvas, search_text, 10, b.height - bar_h/2 + term->font_size/2, &font, &text_paint);
     }
     
     if (term->context_menu && ((VaxpContextMenu*)term->context_menu)->is_open) {
@@ -1143,6 +1185,32 @@ static VaxpBool term_on_event(VaxpWidget* self, const VaxpEvent* event) {
     }
     
     if (event->type == VAXP_EVENT_KEY_DOWN && term->pty_fd >= 0) {
+        if (term->search_active) {
+            if (event->key.key == VAXP_KEY_ESCAPE) {
+                term->search_active = VAXP_FALSE;
+                vaxp_widget_invalidate(self);
+                return VAXP_TRUE;
+            } else if (event->key.key == VAXP_KEY_BACKSPACE) {
+                if (term->search_query_len > 0) {
+                    term->search_query[--term->search_query_len] = '\0';
+                    vaxp_widget_invalidate(self);
+                }
+                return VAXP_TRUE;
+            } else if (event->key.key >= 32 && event->key.key <= 126) {
+                if (term->search_query_len < sizeof(term->search_query) - 1) {
+                    term->search_query[term->search_query_len++] = (char)event->key.key;
+                    term->search_query[term->search_query_len] = '\0';
+                    vaxp_widget_invalidate(self);
+                }
+                return VAXP_TRUE;
+            } else if (event->key.key == VAXP_KEY_RETURN) {
+                /* For now just hide search on enter, or we can use it to jump to next */
+                term->search_active = VAXP_FALSE;
+                vaxp_widget_invalidate(self);
+                return VAXP_TRUE;
+            }
+        }
+        
         term->scroll_offset = 0;
         
         if ((event->key.modifiers & VAXP_KEYMOD_CTRL) && (event->key.modifiers & VAXP_KEYMOD_SHIFT)) {
@@ -1155,6 +1223,12 @@ static VaxpBool term_on_event(VaxpWidget* self, const VaxpEvent* event) {
                     (void)write(term->pty_fd, text, strlen(text));
                     free(text);
                 }
+                return VAXP_TRUE;
+            } else if (event->key.key == 'F' || event->key.key == 'f') {
+                term->search_active = VAXP_TRUE;
+                term->search_query[0] = '\0';
+                term->search_query_len = 0;
+                vaxp_widget_invalidate(self);
                 return VAXP_TRUE;
             }
         }

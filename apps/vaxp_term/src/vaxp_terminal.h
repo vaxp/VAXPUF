@@ -97,6 +97,11 @@ struct VaxpTerminal {
     
     VaxpWidget* context_menu;
     
+    /* Search feature */
+    VaxpBool search_active;
+    char search_query[256];
+    int search_query_len;
+    
     void (*on_title_changed)(void* user_data, const char* title);
     void* title_user_data;
 };

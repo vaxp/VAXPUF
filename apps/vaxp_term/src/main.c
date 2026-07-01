@@ -1,14 +1,17 @@
 #include <vaxp/vaxpui.h>
 #include "pty_handler.h"
 #include "vaxp_terminal.h"
+#include "config_parser.h"
 #include <pthread.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 static int g_pty_fd = -1;
 static pid_t g_shell_pid = -1;
 static VaxpWidget* g_terminal = NULL;
 static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
+static VaxpTermConfig g_config;
 
 /* Background thread to read from PTY */
 static void* pty_reader_thread(void* arg) {
@@ -37,9 +40,16 @@ static VaxpWidget* build_ui(void) {
     g_terminal = vaxp_term_widget(
         .cols = 80,
         .rows = 24,
-        .font_size = 14.0f,
+        .font_size = g_config.font_size,
         .pty_fd = g_pty_fd
     );
+    
+    /* Apply config colors */
+    VaxpTerminal* t = (VaxpTerminal*)g_terminal;
+    t->default_fg = g_config.default_fg;
+    t->default_bg = g_config.default_bg;
+    t->current_fg = g_config.default_fg;
+    t->current_bg = g_config.default_bg;
     
     /* VaxpTerminal handles stretching itself */
     VaxpWidget* root = vaxp_col(
@@ -57,6 +67,13 @@ static VaxpWidget* build_ui(void) {
 
 int main(int argc, char** argv) {
     (void)argc; (void)argv;
+    
+    /* Load config */
+    char config_path[256];
+    const char* home_dir = getenv("HOME");
+    if (!home_dir) home_dir = ".";
+    snprintf(config_path, sizeof(config_path), "%s/.config/vaxp_term.conf", home_dir);
+    load_vaxp_term_config(config_path, &g_config);
     
     /* Start Shell */
     if (pty_start(&g_pty_fd, &g_shell_pid, 80, 24) < 0) {
