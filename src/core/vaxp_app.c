@@ -15,9 +15,14 @@
 
 #include <X11/Xlib.h>
 
+#ifdef VAXP_USE_OPENGL
+extern VaxpResultPtr vaxp_canvas_create_opengl(Display* display, Window window, 
+                                               VaxpU32 width, VaxpU32 height);
+#else
 /* External canvas creation function */
 extern VaxpResultPtr vaxp_canvas_create_for_xlib(Display* display, Window window, 
                                                     Visual* visual, VaxpU32 width, VaxpU32 height);
+#endif
 
 /* X11 display structure (internal) */
 typedef struct {
@@ -433,10 +438,16 @@ int vaxp_run_app(const VaxpAppConfig* config) {
     }
     
     /* Create canvas */
+#ifdef VAXP_USE_OPENGL
+    VaxpResultPtr canvas_result = vaxp_canvas_create_opengl(
+        x11->xdisplay, xwindow, width, height
+    );
+#else
     Visual* visual = DefaultVisual(x11->xdisplay, x11->default_screen);
     VaxpResultPtr canvas_result = vaxp_canvas_create_for_xlib(
         x11->xdisplay, xwindow, visual, width, height
     );
+#endif
     if (!canvas_result.ok) {
         fprintf(stderr, "VAXPUI: Failed to create canvas: %s\n",
                 vaxp_error_string(canvas_result.error));

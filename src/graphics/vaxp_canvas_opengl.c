@@ -24,6 +24,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stddef.h>
+#include <cairo/cairo.h>
+#include <pango/pangocairo.h>
 
 /* stb_truetype for font rendering */
 #define STB_TRUETYPE_IMPLEMENTATION
@@ -49,6 +52,7 @@ static PFNGLDELETEPROGRAMPROC glDeleteProgram = NULL;
 static PFNGLUSEPROGRAMPROC glUseProgram = NULL;
 static PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation = NULL;
 static PFNGLUNIFORM1FPROC glUniform1f = NULL;
+static PFNGLUNIFORM1IPROC glUniform1i = NULL;
 static PFNGLUNIFORM2FPROC glUniform2f = NULL;
 static PFNGLUNIFORM3FPROC glUniform3f = NULL;
 static PFNGLUNIFORM4FPROC glUniform4f = NULL;
@@ -61,6 +65,7 @@ static PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays = NULL;
 static PFNGLGENBUFFERSPROC glGenBuffers = NULL;
 static PFNGLBINDBUFFERPROC glBindBuffer = NULL;
 static PFNGLBUFFERDATAPROC glBufferData = NULL;
+static PFNGLBUFFERSUBDATAPROC glBufferSubData = NULL;
 static PFNGLDELETEBUFFERSPROC glDeleteBuffers = NULL;
 static PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer = NULL;
 static PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray = NULL;
@@ -97,6 +102,7 @@ static VaxpBool load_gl_functions(void) {
     LOAD_GL(glUseProgram);
     LOAD_GL(glGetUniformLocation);
     LOAD_GL(glUniform1f);
+    LOAD_GL(glUniform1i);
     LOAD_GL(glUniform2f);
     LOAD_GL(glUniform3f);
     LOAD_GL(glUniform4f);
@@ -107,6 +113,7 @@ static VaxpBool load_gl_functions(void) {
     LOAD_GL(glGenBuffers);
     LOAD_GL(glBindBuffer);
     LOAD_GL(glBufferData);
+    LOAD_GL(glBufferSubData);
     LOAD_GL(glDeleteBuffers);
     LOAD_GL(glVertexAttribPointer);
     LOAD_GL(glEnableVertexAttribArray);
@@ -125,6 +132,53 @@ static VaxpBool load_gl_functions(void) {
 /* ============================================================================
  * SHADER SOURCES
  * ============================================================================ */
+
+/* Uber Vertex Shader for Batching */
+static const char* VERTEX_SHADER_UBER = 
+    "#version 330 core\n"
+    "layout(location = 0) in vec2 aPos;\n"
+    "layout(location = 1) in vec2 aTexCoord;\n"
+    "layout(location = 2) in vec4 aColor;\n"
+    "layout(location = 3) in vec4 aParams;\n"
+    "uniform mat4 uProjection;\n"
+    "out vec2 vTexCoord;\n"
+    "out vec4 vColor;\n"
+    "out vec4 vParams;\n"
+    "void main() {\n"
+    "    gl_Position = uProjection * vec4(aPos, 0.0, 1.0);\n"
+    "    vTexCoord = aTexCoord;\n"
+    "    vColor = aColor;\n"
+    "    vParams = aParams;\n"
+    "}\n";
+
+/* Uber Fragment Shader for Batching */
+static const char* FRAGMENT_SHADER_UBER = 
+    "#version 330 core\n"
+    "in vec2 vTexCoord;\n"
+    "in vec4 vColor;\n"
+    "in vec4 vParams;\n"
+    "uniform sampler2D uTex;\n"
+    "out vec4 FragColor;\n"
+    "float roundedBoxSDF(vec2 p, vec2 b, float r) {\n"
+    "    vec2 q = abs(p) - b + r;\n"
+    "    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;\n"
+    "}\n"
+    "void main() {\n"
+    "    int type = int(vParams.x + 0.5);\n"
+    "    if (type == 0) {\n"
+    "        FragColor = vColor;\n"
+    "    } else if (type == 1) {\n"
+    "        FragColor = texture(uTex, vTexCoord) * vColor;\n"
+    "    } else if (type == 2) {\n"
+    "        vec2 size = vParams.zw;\n"
+    "        float radius = vParams.y;\n"
+    "        vec2 halfSize = size * 0.5;\n"
+    "        vec2 p = vTexCoord - halfSize;\n"
+    "        float d = roundedBoxSDF(p, halfSize, radius);\n"
+    "        float alpha = 1.0 - smoothstep(-1.0, 1.0, d);\n"
+    "        FragColor = vec4(vColor.rgb, vColor.a * alpha);\n"
+    "    }\n"
+    "}\n";
 
 /* Basic 2D vertex shader */
 static const char* VERTEX_SHADER_2D = 
@@ -234,9 +288,10 @@ static const char* VERTEX_SHADER_TEXT =
     "layout(location = 0) in vec2 aPos;\n"
     "layout(location = 1) in vec2 aTexCoord;\n"
     "uniform mat4 uProjection;\n"
+    "uniform mat4 uModel;\n"
     "out vec2 vTexCoord;\n"
     "void main() {\n"
-    "    gl_Position = uProjection * vec4(aPos, 0.0, 1.0);\n"
+    "    gl_Position = uProjection * uModel * vec4(aPos, 0.0, 1.0);\n"
     "    vTexCoord = aTexCoord;\n"
     "}\n";
 
@@ -255,6 +310,26 @@ static const char* FRAGMENT_SHADER_TEXT =
 /* ============================================================================
  * OPENGL CANVAS STRUCTURE
  * ============================================================================ */
+
+
+#define MAX_BATCH_VERTICES 16384
+#define MAX_TEXT_CACHE 256
+
+typedef struct {
+    VaxpF32 x, y;
+    VaxpF32 u, v;
+    VaxpF32 r, g, b, a;
+    VaxpF32 type, radius, width, height;
+} VaxpGLVertex;
+
+typedef struct {
+    char* text;
+    VaxpColor color;
+    GLuint texture;
+    int width;
+    int height;
+    float font_size;
+} TextCacheEntry;
 
 typedef struct VaxpGLCanvas {
     VaxpCanvas base;
@@ -288,8 +363,26 @@ typedef struct VaxpGLCanvas {
     
     /* State stack */
     float transform_stack[32][16]; /* 4x4 matrices */
+    VaxpRectF clip_stack[32];
+    VaxpRectF current_clip;
+    VaxpBool clip_enabled_stack[32];
+    VaxpBool clip_enabled;
     int stack_depth;
     
+    
+    /* Batching state */
+    GLuint prog_uber;
+    GLuint uber_vao;
+    GLuint uber_vbo;
+    VaxpGLVertex batch_vertices[MAX_BATCH_VERTICES];
+    int batch_count;
+    GLuint current_texture;
+    
+    /* Text cache */
+    TextCacheEntry text_cache[MAX_TEXT_CACHE];
+    int text_cache_count;
+    int text_cache_head;
+
     /* Current transform */
     float model_matrix[16];
     float projection_matrix[16];
@@ -521,59 +614,13 @@ static const float CUBE_VERTICES[] = {
  * ============================================================================ */
 
 /* Make this canvas's context current before any GL operations */
+static void gl_batch_flush(VaxpGLCanvas* c);
 static void gl_make_current(VaxpGLCanvas* c) {
     glXMakeCurrent(c->display, c->window, c->glx_context);
 }
 
 /* Load font and create texture atlas */
-static int gl_load_font(VaxpGLCanvas* c, const char* font_path, float font_size) {
-    FILE* f = fopen(font_path, "rb");
-    if (!f) {
-        fprintf(stderr, "Could not open font: %s\n", font_path);
-        return 0;
-    }
-    
-    fseek(f, 0, SEEK_END);
-    long size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    
-    unsigned char* font_data = (unsigned char*)malloc(size);
-    if (!font_data) {
-        fclose(f);
-        return 0;
-    }
-    
-    if (fread(font_data, 1, size, f) != (size_t)size) {
-        free(font_data);
-        fclose(f);
-        return 0;
-    }
-    fclose(f);
-    
-    /* Create bitmap for font */
-    int tex_w = 512, tex_h = 512;
-    unsigned char* bitmap = (unsigned char*)calloc(tex_w * tex_h, 1);
-    
-    stbtt_BakeFontBitmap(font_data, 0, font_size, bitmap, tex_w, tex_h, 
-                         32, 96, c->font_chars);
-    
-    free(font_data);
-    
-    /* Create OpenGL texture */
-    glGenTextures(1, &c->font_texture);
-    glBindTexture(GL_TEXTURE_2D, c->font_texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, tex_w, tex_h, 0, 
-                 GL_RED, GL_UNSIGNED_BYTE, bitmap);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    
-    free(bitmap);
-    
-    c->font_size = font_size;
-    c->font_loaded = 1;
-    printf("Font loaded: %s (%.0fpx)\n", font_path, font_size);
-    return 1;
-}
+
 
 static void gl_canvas_destroy(VaxpCanvas* canvas) {
     VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
@@ -598,6 +645,8 @@ static void gl_canvas_save(VaxpCanvas* canvas) {
     VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
     if (c->stack_depth < 31) {
         mat4_copy(c->transform_stack[c->stack_depth], c->model_matrix);
+        c->clip_stack[c->stack_depth] = c->current_clip;
+        c->clip_enabled_stack[c->stack_depth] = c->clip_enabled;
         c->stack_depth++;
     }
 }
@@ -607,6 +656,17 @@ static void gl_canvas_restore(VaxpCanvas* canvas) {
     if (c->stack_depth > 0) {
         c->stack_depth--;
         mat4_copy(c->model_matrix, c->transform_stack[c->stack_depth]);
+        gl_batch_flush(c);
+        c->current_clip = c->clip_stack[c->stack_depth];
+        c->clip_enabled = c->clip_enabled_stack[c->stack_depth];
+        
+        if (c->clip_enabled) {
+            glScissor((GLint)c->current_clip.x, (GLint)c->current_clip.y, 
+                      (GLsizei)c->current_clip.width, (GLsizei)c->current_clip.height);
+            glEnable(GL_SCISSOR_TEST);
+        } else {
+            glDisable(GL_SCISSOR_TEST);
+        }
     }
 }
 
@@ -626,9 +686,38 @@ static void gl_canvas_rotate(VaxpCanvas* canvas, VaxpF32 degrees) {
 }
 
 static void gl_canvas_clip_rect(VaxpCanvas* canvas, VaxpRectF rect) {
-    glScissor((GLint)rect.x, (GLint)rect.y, (GLsizei)rect.width, (GLsizei)rect.height);
+    VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
+    
+    /* Calculate absolute window coordinates */
+    /* rect is in local coordinates. c->model_matrix has translation in [12] and [13]. */
+    VaxpF32 abs_x = rect.x + c->model_matrix[12];
+    VaxpF32 abs_y = rect.y + c->model_matrix[13];
+    
+    /* glScissor expects origin at bottom-left */
+    VaxpF32 scissor_y = canvas->height - (abs_y + rect.height);
+    
+    VaxpRectF new_clip = { abs_x, scissor_y, rect.width, rect.height };
+    
+    /* Intersect with current clip if there is one */
+    if (c->clip_enabled) {
+        VaxpF32 x1 = VAXP_MAX(c->current_clip.x, new_clip.x);
+        VaxpF32 y1 = VAXP_MAX(c->current_clip.y, new_clip.y);
+        VaxpF32 x2 = VAXP_MIN(c->current_clip.x + c->current_clip.width, new_clip.x + new_clip.width);
+        VaxpF32 y2 = VAXP_MIN(c->current_clip.y + c->current_clip.height, new_clip.y + new_clip.height);
+        
+        new_clip.x = x1;
+        new_clip.y = y1;
+        new_clip.width = x2 > x1 ? x2 - x1 : 0;
+        new_clip.height = y2 > y1 ? y2 - y1 : 0;
+    }
+    
+    gl_batch_flush(c);
+    c->current_clip = new_clip;
+    c->clip_enabled = VAXP_TRUE;
+    
+    glScissor((GLint)c->current_clip.x, (GLint)c->current_clip.y, 
+              (GLsizei)c->current_clip.width, (GLsizei)c->current_clip.height);
     glEnable(GL_SCISSOR_TEST);
-    (void)canvas;
 }
 
 static void gl_canvas_clip_rounded_rect(VaxpCanvas* canvas, VaxpRectF rect, VaxpF32 radius) {
@@ -637,119 +726,90 @@ static void gl_canvas_clip_rounded_rect(VaxpCanvas* canvas, VaxpRectF rect, Vaxp
     (void)radius;
 }
 
+
+static void gl_batch_flush(VaxpGLCanvas* c) {
+    if (c->batch_count == 0) return;
+    
+    glUseProgram(c->prog_uber);
+    glUniformMatrix4fv(glGetUniformLocation(c->prog_uber, "uProjection"), 1, GL_FALSE, c->projection_matrix);
+    
+    if (c->current_texture != 0) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, c->current_texture);
+        glUniform1i(glGetUniformLocation(c->prog_uber, "uTex"), 0);
+    }
+    
+    glBindVertexArray(c->uber_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, c->uber_vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, c->batch_count * sizeof(VaxpGLVertex), c->batch_vertices);
+    
+    glDrawArrays(GL_TRIANGLES, 0, c->batch_count);
+    c->batch_count = 0;
+}
+
+static void gl_batch_push_quad(VaxpGLCanvas* c, VaxpF32 type, VaxpF32 rad, VaxpF32 w, VaxpF32 h,
+                               VaxpF32* pts, VaxpF32* uvs, VaxpColor color, GLuint tex) {
+    if (c->current_texture != tex || c->batch_count + 6 > MAX_BATCH_VERTICES) {
+        gl_batch_flush(c);
+        c->current_texture = tex;
+    }
+    
+    VaxpF32 r = color.r/255.0f, g = color.g/255.0f, b = color.b/255.0f, a = color.a/255.0f;
+    
+    /* Apply model matrix to vertices */
+    VaxpF32 tx[4], ty[4];
+    for (int i=0; i<4; i++) {
+        tx[i] = pts[i*2] * c->model_matrix[0] + pts[i*2+1] * c->model_matrix[4] + c->model_matrix[12];
+        ty[i] = pts[i*2] * c->model_matrix[1] + pts[i*2+1] * c->model_matrix[5] + c->model_matrix[13];
+    }
+    
+    int indices[] = {0, 1, 2, 0, 2, 3};
+    for (int i=0; i<6; i++) {
+        int idx = indices[i];
+        VaxpGLVertex* v = &c->batch_vertices[c->batch_count++];
+        v->x = tx[idx]; v->y = ty[idx];
+        v->u = uvs[idx*2]; v->v = uvs[idx*2+1];
+        v->r = r; v->g = g; v->b = b; v->a = a;
+        v->type = type; v->radius = rad; v->width = w; v->height = h;
+    }
+}
+
 static void gl_canvas_clear(VaxpCanvas* canvas, VaxpColor color) {
     VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
     gl_make_current(c);
+    
+    glDisable(GL_SCISSOR_TEST);
+    c->clip_enabled = VAXP_FALSE;
+    c->stack_depth = 0;
+    mat4_identity(c->model_matrix);
+    mat4_identity(c->projection_matrix);
+    mat4_ortho(c->projection_matrix, 0.0f, canvas->width, canvas->height, 0.0f, -1.0f, 1.0f);
+    
     glClearColor(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-static void setup_quad_geometry(VaxpGLCanvas* c, VaxpRectF rect) {
-    float x = rect.x, y = rect.y, w = rect.width, h = rect.height;
-    
-    float vertices[] = {
-        x,     y,     0.0f, 0.0f,
-        x + w, y,     1.0f, 0.0f,
-        x + w, y + h, 1.0f, 1.0f,
-        x,     y,     0.0f, 0.0f,
-        x + w, y + h, 1.0f, 1.0f,
-        x,     y + h, 0.0f, 1.0f,
-    };
-    
-    glBindVertexArray(c->quad_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, c->quad_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
-}
+
 
 static void gl_canvas_draw_rect(VaxpCanvas* canvas, VaxpRectF rect, const VaxpPaint* paint) {
     VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
-    
-    glUseProgram(c->prog_solid);
-    glUniformMatrix4fv(glGetUniformLocation(c->prog_solid, "uProjection"), 
-                       1, GL_FALSE, c->projection_matrix);
-    glUniformMatrix4fv(glGetUniformLocation(c->prog_solid, "uModel"), 
-                       1, GL_FALSE, c->model_matrix);
-    glUniform4f(glGetUniformLocation(c->prog_solid, "uColor"),
-                paint->color.r / 255.0f, paint->color.g / 255.0f,
-                paint->color.b / 255.0f, paint->color.a / 255.0f);
-    
-    setup_quad_geometry(c, rect);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
+    VaxpF32 pts[8] = {rect.x, rect.y, rect.x+rect.width, rect.y, rect.x+rect.width, rect.y+rect.height, rect.x, rect.y+rect.height};
+    VaxpF32 uvs[8] = {0,0, 0,0, 0,0, 0,0};
+    gl_batch_push_quad(c, 0.0f, 0.0f, 0.0f, 0.0f, pts, uvs, paint->color, 0);
 }
 
-static void gl_canvas_draw_rounded_rect(VaxpCanvas* canvas, VaxpRectF rect, 
-                                         VaxpF32 radius, const VaxpPaint* paint) {
+static void gl_canvas_draw_rounded_rect(VaxpCanvas* canvas, VaxpRectF rect, VaxpF32 radius, const VaxpPaint* paint) {
     VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
-    
-    /* Create geometry centered at origin for SDF */
-    float vertices[] = {
-        0.0f,        0.0f,         0.0f, 0.0f,
-        rect.width,  0.0f,         rect.width, 0.0f,
-        rect.width,  rect.height,  rect.width, rect.height,
-        0.0f,        0.0f,         0.0f, 0.0f,
-        rect.width,  rect.height,  rect.width, rect.height,
-        0.0f,        rect.height,  0.0f, rect.height,
-    };
-    
-    /* Update model matrix for position */
-    float saved[16];
-    mat4_copy(saved, c->model_matrix);
-    mat4_translate(c->model_matrix, rect.x, rect.y, 0.0f);
-    
-    glUseProgram(c->prog_rounded);
-    glUniformMatrix4fv(glGetUniformLocation(c->prog_rounded, "uProjection"), 
-                       1, GL_FALSE, c->projection_matrix);
-    glUniformMatrix4fv(glGetUniformLocation(c->prog_rounded, "uModel"), 
-                       1, GL_FALSE, c->model_matrix);
-    glUniform4f(glGetUniformLocation(c->prog_rounded, "uColor"),
-                paint->color.r / 255.0f, paint->color.g / 255.0f,
-                paint->color.b / 255.0f, paint->color.a / 255.0f);
-    glUniform2f(glGetUniformLocation(c->prog_rounded, "uSize"), rect.width, rect.height);
-    glUniform1f(glGetUniformLocation(c->prog_rounded, "uRadius"), radius);
-    
-    glBindVertexArray(c->quad_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, c->quad_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    
-    mat4_copy(c->model_matrix, saved);
+    VaxpF32 pts[8] = {rect.x, rect.y, rect.x+rect.width, rect.y, rect.x+rect.width, rect.y+rect.height, rect.x, rect.y+rect.height};
+    VaxpF32 uvs[8] = {0,0, rect.width,0, rect.width,rect.height, 0,rect.height};
+    gl_batch_push_quad(c, 2.0f, radius, rect.width, rect.height, pts, uvs, paint->color, 0);
 }
 
-static void gl_canvas_draw_circle(VaxpCanvas* canvas, VaxpF32 cx, VaxpF32 cy, 
-                                   VaxpF32 radius, const VaxpPaint* paint) {
+static void gl_canvas_draw_circle(VaxpCanvas* canvas, VaxpF32 cx, VaxpF32 cy, VaxpF32 radius, const VaxpPaint* paint) {
     VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
-    
-    /* Create quad centered at origin */
-    float r = radius;
-    float vertices[] = {
-        -r, -r, -r, -r,
-         r, -r,  r, -r,
-         r,  r,  r,  r,
-        -r, -r, -r, -r,
-         r,  r,  r,  r,
-        -r,  r, -r,  r,
-    };
-    
-    float saved[16];
-    mat4_copy(saved, c->model_matrix);
-    mat4_translate(c->model_matrix, cx, cy, 0.0f);
-    
-    glUseProgram(c->prog_circle);
-    glUniformMatrix4fv(glGetUniformLocation(c->prog_circle, "uProjection"), 
-                       1, GL_FALSE, c->projection_matrix);
-    glUniformMatrix4fv(glGetUniformLocation(c->prog_circle, "uModel"), 
-                       1, GL_FALSE, c->model_matrix);
-    glUniform4f(glGetUniformLocation(c->prog_circle, "uColor"),
-                paint->color.r / 255.0f, paint->color.g / 255.0f,
-                paint->color.b / 255.0f, paint->color.a / 255.0f);
-    glUniform1f(glGetUniformLocation(c->prog_circle, "uRadius"), radius);
-    
-    glBindVertexArray(c->quad_vao);
-    glBindBuffer(GL_ARRAY_BUFFER, c->quad_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    
-    mat4_copy(c->model_matrix, saved);
+    VaxpF32 pts[8] = {cx-radius, cy-radius, cx+radius, cy-radius, cx+radius, cy+radius, cx-radius, cy+radius};
+    VaxpF32 uvs[8] = {0,0, radius*2,0, radius*2,radius*2, 0,radius*2};
+    gl_batch_push_quad(c, 2.0f, radius, radius*2, radius*2, pts, uvs, paint->color, 0);
 }
 
 static void gl_canvas_draw_oval(VaxpCanvas* canvas, VaxpRectF rect, const VaxpPaint* paint) {
@@ -802,87 +862,106 @@ static void gl_canvas_draw_path(VaxpCanvas* canvas, const VaxpPath* path, const 
 static void gl_canvas_draw_text(VaxpCanvas* canvas, const char* text, VaxpF32 x, VaxpF32 y,
                                  const VaxpFont* font, const VaxpPaint* paint) {
     VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
-    (void)font;
-    
     if (!text || !*text) return;
     
-    /* If font not loaded, try to load default font */
-    if (!c->font_loaded) {
-        /* Try common font paths */
-        static const char* font_paths[] = {
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-            "/usr/share/fonts/TTF/DejaVuSans.ttf",
-            "/usr/share/fonts/noto/NotoSans-Regular.ttf",
-            NULL
-        };
-        
-        for (int i = 0; font_paths[i]; i++) {
-            if (gl_load_font(c, font_paths[i], 18.0f)) break;
+    GLuint tex = 0;
+    int tw = 0, th = 0;
+    
+    /* Search cache */
+    for (int i=0; i<c->text_cache_count; i++) {
+        TextCacheEntry* e = &c->text_cache[i];
+        if (e->color.r == paint->color.r && e->color.g == paint->color.g && 
+            e->color.b == paint->color.b && e->color.a == paint->color.a &&
+            e->font_size == c->font_size && strcmp(e->text, text) == 0) {
+            tex = e->texture;
+            tw = e->width;
+            th = e->height;
+            break;
         }
+    }
+    
+    if (tex == 0) {
+        cairo_surface_t* temp_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
+        cairo_t* cr = cairo_create(temp_surface);
+        PangoLayout* layout = pango_cairo_create_layout(cr);
         
-        if (!c->font_loaded) {
-            /* Fallback: draw rectangles */
-            VaxpF32 cursor = x;
-            for (const char* p = text; *p; p++) {
-                VaxpRectF r = { cursor, y - 12, 8, 14 };
-                gl_canvas_draw_rect(canvas, r, paint);
-                cursor += 10;
-            }
+        char font_desc_str[64];
+        snprintf(font_desc_str, sizeof(font_desc_str), "Noto Sans %f", c->font_size > 0 ? c->font_size : 14.0f);
+        PangoFontDescription* desc = pango_font_description_from_string(font_desc_str);
+        pango_layout_set_font_description(layout, desc);
+        pango_font_description_free(desc);
+        
+        pango_layout_set_text(layout, text, -1);
+        pango_layout_get_pixel_size(layout, &tw, &th);
+        
+        cairo_destroy(cr);
+        cairo_surface_destroy(temp_surface);
+        
+        if (tw == 0 || th == 0) {
+            g_object_unref(layout);
             return;
         }
+        
+        cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, tw, th);
+        cr = cairo_create(surface);
+        
+        cairo_set_source_rgba(cr, 0, 0, 0, 0);
+        cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+        cairo_paint(cr);
+        
+        cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+        cairo_set_source_rgba(cr, paint->color.r/255.0f, paint->color.g/255.0f, paint->color.b/255.0f, paint->color.a/255.0f);
+        
+        pango_cairo_update_layout(cr, layout);
+        
+        /* Adjust for baseline like cairo backend */
+        VaxpF32 adjusted_y = th * 0.15f; 
+        cairo_move_to(cr, 0, 0);
+        
+        pango_cairo_show_layout(cr, layout);
+        
+        cairo_surface_flush(surface);
+        unsigned char* data = cairo_image_surface_get_data(surface);
+        
+        /* Generate texture */
+        /* Must flush batch before generating texture because active GL context operations? No, it's fine. */
+        glGenTextures(1, &tex);
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tw, th, 0, GL_BGRA, GL_UNSIGNED_BYTE, data);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        
+        cairo_destroy(cr);
+        cairo_surface_destroy(surface);
+        g_object_unref(layout);
+        
+        /* Add to LRU/Cache */
+        int idx = c->text_cache_count < MAX_TEXT_CACHE ? c->text_cache_count++ : c->text_cache_head;
+        c->text_cache_head = (idx + 1) % MAX_TEXT_CACHE;
+        
+        TextCacheEntry* e = &c->text_cache[idx];
+        if (e->text) free(e->text);
+        
+        e->text = (char*)malloc(strlen(text) + 1);
+        strcpy(e->text, text);
+
+        if (e->texture) glDeleteTextures(1, &e->texture);
+        e->texture = tex;
+        e->width = tw;
+        e->height = th;
+        e->color = paint->color;
+        e->font_size = c->font_size;
     }
     
-    /* Use text shader */
-    glUseProgram(c->prog_text);
-    glUniformMatrix4fv(glGetUniformLocation(c->prog_text, "uProjection"), 
-                       1, GL_FALSE, c->projection_matrix);
-    glUniform4f(glGetUniformLocation(c->prog_text, "uColor"),
-                paint->color.r / 255.0f, paint->color.g / 255.0f,
-                paint->color.b / 255.0f, paint->color.a / 255.0f);
-    
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, c->font_texture);
-    glUniform1i(glGetUniformLocation(c->prog_text, "uTexture"), 0);
-    
-    float cursor_x = x;
-    
-    for (const char* p = text; *p; p++) {
-        if (*p < 32 || *p >= 127) continue;
-        
-        stbtt_bakedchar* ch = &c->font_chars[*p - 32];
-        
-        float x0 = cursor_x + ch->xoff;
-        float y0 = y + ch->yoff;
-        float x1 = x0 + (ch->x1 - ch->x0);
-        float y1 = y0 + (ch->y1 - ch->y0);
-        
-        float s0 = ch->x0 / 512.0f;
-        float t0 = ch->y0 / 512.0f;
-        float s1 = ch->x1 / 512.0f;
-        float t1 = ch->y1 / 512.0f;
-        
-        float vertices[] = {
-            x0, y0, s0, t0,
-            x1, y0, s1, t0,
-            x1, y1, s1, t1,
-            x0, y0, s0, t0,
-            x1, y1, s1, t1,
-            x0, y1, s0, t1,
-        };
-        
-        glBindVertexArray(c->quad_vao);
-        glBindBuffer(GL_ARRAY_BUFFER, c->quad_vbo);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        
-        cursor_x += ch->xadvance;
-    }
+    /* Adjust drawing Y so it matches Cairo's baseline behavior */
+    VaxpF32 draw_y = y - th * 0.7f;
+    VaxpF32 pts[8] = {x, draw_y, x+tw, draw_y, x+tw, draw_y+th, x, draw_y+th};
+    VaxpF32 uvs[8] = {0,0, 1,0, 1,1, 0,1};
+    gl_batch_push_quad(c, 1.0f, 0.0f, 0.0f, 0.0f, pts, uvs, vaxp_color_rgba(255,255,255,255), tex);
 }
 
 static void gl_canvas_draw_image(VaxpCanvas* canvas, const VaxpImage* image, VaxpF32 x, VaxpF32 y) {
     (void)canvas; (void)image; (void)x; (void)y;
-    /* TODO: texture rendering */
 }
 
 static void gl_canvas_draw_image_rect(VaxpCanvas* canvas, const VaxpImage* image,
@@ -892,6 +971,7 @@ static void gl_canvas_draw_image_rect(VaxpCanvas* canvas, const VaxpImage* image
 }
 
 static void gl_canvas_flush(VaxpCanvas* canvas) {
+    gl_batch_flush((VaxpGLCanvas*)canvas);
     VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
     gl_make_current(c);
     glFlush();
@@ -939,6 +1019,9 @@ static void canvas_destructor(void* self) {
 
 VaxpResultPtr vaxp_canvas_create_opengl(Display* display, Window window, 
                                            VaxpU32 width, VaxpU32 height) {
+    /* Disable V-Sync for unlocked FPS */
+    setenv("vblank_mode", "0", 1);
+    
     /* Find a suitable visual */
     static int visual_attribs[] = {
         GLX_X_RENDERABLE, True,
@@ -1028,6 +1111,24 @@ VaxpResultPtr vaxp_canvas_create_opengl(Display* display, Window window,
     canvas->prog_circle = create_program(VERTEX_SHADER_2D, FRAGMENT_SHADER_CIRCLE);
     canvas->prog_3d = create_program(VERTEX_SHADER_3D, FRAGMENT_SHADER_3D);
     canvas->prog_text = create_program(VERTEX_SHADER_TEXT, FRAGMENT_SHADER_TEXT);
+
+    /* Create Uber Shader for Batching */
+    canvas->prog_uber = create_program(VERTEX_SHADER_UBER, FRAGMENT_SHADER_UBER);
+    glGenVertexArrays(1, &canvas->uber_vao);
+    glGenBuffers(1, &canvas->uber_vbo);
+    glBindVertexArray(canvas->uber_vao);
+    glBindBuffer(GL_ARRAY_BUFFER, canvas->uber_vbo);
+    glBufferData(GL_ARRAY_BUFFER, MAX_BATCH_VERTICES * sizeof(VaxpGLVertex), NULL, GL_DYNAMIC_DRAW);
+    
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(VaxpGLVertex), (void*)offsetof(VaxpGLVertex, x));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VaxpGLVertex), (void*)offsetof(VaxpGLVertex, u));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(VaxpGLVertex), (void*)offsetof(VaxpGLVertex, r));
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(VaxpGLVertex), (void*)offsetof(VaxpGLVertex, type));
+
     
     /* Initialize font state */
     canvas->font_loaded = 0;
