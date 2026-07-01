@@ -227,6 +227,9 @@ endif
 # Vaxp Desktop Environment
 subdir('vaxp-de')
 
+# Applications
+subdir('apps')
+
 # Summary
 backend_name = 'Cairo'
 if enable_opengl
