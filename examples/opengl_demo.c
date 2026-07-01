@@ -1,5 +1,5 @@
 /*
- * VENOMUI - OpenGL Demo
+ * VAXPUI - OpenGL Demo
  * 
  * Showcases OpenGL rendering capabilities including:
  * - 2D shapes with smooth anti-aliasing
@@ -31,11 +31,11 @@
 #include <GL/gl.h>
 #include <GL/glx.h>
 
-#include "venom/core/venom_types.h"
-#include "venom/core/venom_result.h"
-#include "venom/core/venom_ref.h"
-#include "venom/graphics/venom_canvas.h"
-#include "venom/graphics/venom_canvas_opengl.h"
+#include "vaxp/core/vaxp_types.h"
+#include "vaxp/core/vaxp_result.h"
+#include "vaxp/core/vaxp_ref.h"
+#include "vaxp/graphics/vaxp_canvas.h"
+#include "vaxp/graphics/vaxp_canvas_opengl.h"
 
 /* ============================================================================
  * DEMO STATE
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
     (void)argc; (void)argv;
     
     printf("===========================================\n");
-    printf("   VENOMUI OpenGL Demo\n");
+    printf("   VAXPUI OpenGL Demo\n");
     printf("   Showcasing GPU-Accelerated Rendering\n");
     printf("===========================================\n\n");
     
@@ -122,7 +122,7 @@ int main(int argc, char** argv) {
     }
     
     /* Set window title */
-    XStoreName(display, window, "VENOMUI - OpenGL 3D Demo");
+    XStoreName(display, window, "VAXPUI - OpenGL 3D Demo");
     
     /* Show window */
     XMapWindow(display, window);
@@ -137,14 +137,14 @@ int main(int argc, char** argv) {
     
     /* Create OpenGL canvas */
     printf("Creating OpenGL canvas...\n");
-    VenomResultPtr canvas_result = venom_canvas_create_opengl(display, window, width, height);
+    VaxpResultPtr canvas_result = vaxp_canvas_create_opengl(display, window, width, height);
     if (!canvas_result.ok) {
         fprintf(stderr, "Failed to create OpenGL canvas\n");
         XDestroyWindow(display, window);
         XCloseDisplay(display);
         return 1;
     }
-    VenomCanvas* canvas = (VenomCanvas*)canvas_result.value;
+    VaxpCanvas* canvas = (VaxpCanvas*)canvas_result.value;
     printf("OpenGL canvas created successfully!\n\n");
     
     /* Disable VSync for maximum FPS */
@@ -221,17 +221,17 @@ int main(int argc, char** argv) {
         }
         
         /* Clear with dark gradient-like background */
-        VenomColor bg = venom_color_rgb(25, 25, 35);
-        venom_canvas_clear(canvas, bg);
+        VaxpColor bg = vaxp_color_rgb(25, 25, 35);
+        vaxp_canvas_clear(canvas, bg);
         
         /* ===== 3D SECTION ===== */
-        venom_gl_begin_3d(canvas);
+        vaxp_gl_begin_3d(canvas);
         
         /* Draw rotating cubes */
         float rotation = (float)elapsed * 0.8f;
         
         /* Central large cube */
-        venom_gl_draw_cube(canvas, 0.0f, 0.0f, 0.0f, 1.5f, 
+        vaxp_gl_draw_cube(canvas, 0.0f, 0.0f, 0.0f, 1.5f, 
                            rotation, rotation * 1.3f, rotation * 0.7f);
         
         /* Orbiting smaller cubes */
@@ -242,61 +242,61 @@ int main(int argc, char** argv) {
             float z = sinf(angle) * orbit_radius;
             float y = sinf(elapsed * 2.0f + i) * 0.5f;
             
-            venom_gl_draw_cube(canvas, x, y, z, 0.5f,
+            vaxp_gl_draw_cube(canvas, x, y, z, 0.5f,
                                rotation * 2.0f, rotation * 1.5f, rotation);
         }
         
-        venom_gl_end_3d(canvas);
+        vaxp_gl_end_3d(canvas);
         
         /* ===== 2D OVERLAY ===== */
         
         /* Draw UI elements using 2D canvas API */
-        VenomPaint paint_white = venom_paint_fill(venom_color_rgba(255, 255, 255, 200));
-        VenomPaint paint_accent = venom_paint_fill(venom_color_rgba(100, 150, 255, 180));
-        VenomPaint paint_success = venom_paint_fill(venom_color_rgba(80, 200, 120, 200));
+        VaxpPaint paint_white = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, 200));
+        VaxpPaint paint_accent = vaxp_paint_fill(vaxp_color_rgba(100, 150, 255, 180));
+        VaxpPaint paint_success = vaxp_paint_fill(vaxp_color_rgba(80, 200, 120, 200));
         
         /* Title bar */
-        VenomRectF title_bg = { 20, 20, 280, 50 };
-        venom_canvas_draw_rounded_rect(canvas, title_bg, 12.0f, &paint_accent);
+        VaxpRectF title_bg = { 20, 20, 280, 50 };
+        vaxp_canvas_draw_rounded_rect(canvas, title_bg, 12.0f, &paint_accent);
         
         /* Status area */
-        VenomRectF status_bg = { 20, 80, 200, 35 };
-        venom_canvas_draw_rounded_rect(canvas, status_bg, 8.0f, &paint_success);
+        VaxpRectF status_bg = { 20, 80, 200, 35 };
+        vaxp_canvas_draw_rounded_rect(canvas, status_bg, 8.0f, &paint_success);
         
         /* Decorative circles */
         float pulse = (sinf((float)elapsed * 3.0f) + 1.0f) * 0.5f;
-        VenomPaint paint_pulse = venom_paint_fill(venom_color_rgba(255, 100, 150, (int)(150 + pulse * 100)));
-        venom_canvas_draw_circle(canvas, (float)width - 50, 50, 20 + pulse * 10, &paint_pulse);
+        VaxpPaint paint_pulse = vaxp_paint_fill(vaxp_color_rgba(255, 100, 150, (int)(150 + pulse * 100)));
+        vaxp_canvas_draw_circle(canvas, (float)width - 50, 50, 20 + pulse * 10, &paint_pulse);
         
         /* Draw some animated rectangles at bottom */
         for (int i = 0; i < 5; i++) {
             float offset = sinf((float)elapsed * 2.0f + i * 0.5f) * 20.0f;
-            VenomRectF rect = { 
+            VaxpRectF rect = { 
                 30.0f + i * 80.0f, 
                 (float)height - 60.0f + offset, 
                 60.0f, 
                 40.0f 
             };
             
-            VenomColor color = venom_color_rgba(
-                (VenomU8)(100 + i * 30),
-                (VenomU8)(150 + i * 20),
-                (VenomU8)(200 - i * 20),
+            VaxpColor color = vaxp_color_rgba(
+                (VaxpU8)(100 + i * 30),
+                (VaxpU8)(150 + i * 20),
+                (VaxpU8)(200 - i * 20),
                 200
             );
-            VenomPaint paint = venom_paint_fill(color);
-            venom_canvas_draw_rounded_rect(canvas, rect, 8.0f, &paint);
+            VaxpPaint paint = vaxp_paint_fill(color);
+            vaxp_canvas_draw_rounded_rect(canvas, rect, 8.0f, &paint);
         }
         
         /* Draw lines */
-        VenomPaint line_paint = venom_paint_stroke(venom_color_rgba(200, 200, 200, 100), 2.0f);
+        VaxpPaint line_paint = vaxp_paint_stroke(vaxp_color_rgba(200, 200, 200, 100), 2.0f);
         for (int i = 0; i < 3; i++) {
             float y = 150.0f + i * 30.0f;
-            venom_canvas_draw_line(canvas, 20.0f, y, 300.0f, y + sinf(elapsed + i) * 20.0f, &line_paint);
+            vaxp_canvas_draw_line(canvas, 20.0f, y, 300.0f, y + sinf(elapsed + i) * 20.0f, &line_paint);
         }
         
         /* Swap buffers */
-        venom_canvas_flush(canvas);
+        vaxp_canvas_flush(canvas);
         
         /* No sleep - unlimited FPS! */
     }
@@ -308,7 +308,7 @@ int main(int argc, char** argv) {
     printf("  - Total frames: calculated during runtime\n");
     
     /* Cleanup */
-    venom_unref(canvas);
+    vaxp_unref(canvas);
     XFreeColormap(display, colormap);
     XDestroyWindow(display, window);
     XCloseDisplay(display);

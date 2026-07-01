@@ -1,57 +1,57 @@
 # Widgets Guide
 
-VENOMUI provides a comprehensive set of widgets for building desktop UIs.
+VAXPUI provides a comprehensive set of widgets for building desktop UIs.
 
 ## Container Widgets
 
-### Column (venom_col)
+### Column (vaxp_col)
 
 Arranges children vertically.
 
 ```c
-venom_col(
+vaxp_col(
     .gap = 10,                          // Space between children
     .padding = { 10, 10, 10, 10 },      // top, right, bottom, left
-    .background = VENOM_LIGHT,          // Background color
-    .alignment = VENOM_ALIGN_CENTER,    // Horizontal alignment
-    .children = VENOM_CHILDREN(...)
+    .background = VAXP_LIGHT,          // Background color
+    .alignment = VAXP_ALIGN_CENTER,    // Horizontal alignment
+    .children = VAXP_CHILDREN(...)
 )
 ```
 
-### Row (venom_row)
+### Row (vaxp_row)
 
 Arranges children horizontally.
 
 ```c
-venom_row(
+vaxp_row(
     .gap = 16,
     .padding = { 8, 16, 8, 16 },
-    .children = VENOM_CHILDREN(
-        venom_btn("Cancel"),
-        venom_btn("OK", .color = VENOM_PRIMARY)
+    .children = VAXP_CHILDREN(
+        vaxp_btn("Cancel"),
+        vaxp_btn("OK", .color = VAXP_PRIMARY)
     )
 )
 ```
 
-### Center (venom_center)
+### Center (vaxp_center)
 
 Centers content in available space.
 
 ```c
-venom_center(
-    .children = VENOM_CHILDREN(
-        venom_text("Centered Content")
+vaxp_center(
+    .children = VAXP_CHILDREN(
+        vaxp_text("Centered Content")
     )
 )
 ```
 
-### Scrollable (venom_scroll)
+### Scrollable (vaxp_scroll)
 
 Allows scrolling of content larger than viewport.
 
 ```c
-venom_scroll(
-    .direction = VENOM_SCROLL_VERTICAL,
+vaxp_scroll(
+    .direction = VAXP_SCROLL_VERTICAL,
     .height = 300,
     .content = large_content_widget
 )
@@ -67,22 +67,22 @@ venom_scroll(
 
 ## Interactive Widgets
 
-### Button (venom_btn)
+### Button (vaxp_btn)
 
 Clickable button with various styles.
 
 ```c
 // Simple button
-venom_btn("Click Me")
+vaxp_btn("Click Me")
 
 // With callback
-venom_btn("Submit",
+vaxp_btn("Submit",
     .on_click = handle_submit,
-    .color = VENOM_PRIMARY
+    .color = VAXP_PRIMARY
 )
 
 // Callback signature
-void handle_submit(VenomButton* btn, void* user_data) {
+void handle_submit(VaxpButton* btn, void* user_data) {
     printf("Button clicked!\n");
 }
 ```
@@ -91,25 +91,25 @@ void handle_submit(VenomButton* btn, void* user_data) {
 - Tab: Focus
 - Enter/Space: Activate
 
-### TextInput (venom_input)
+### TextInput (vaxp_input)
 
 Single-line text input field.
 
 ```c
-venom_input(
+vaxp_input(
     .placeholder = "Enter username",
     .on_change = on_text_change,
     .on_submit = on_enter_pressed,
     .max_length = 50,
-    .password = VENOM_FALSE
+    .password = VAXP_FALSE
 )
 
 // Callbacks
-void on_text_change(VenomTextInput* input, const char* text, void* data) {
+void on_text_change(VaxpTextInput* input, const char* text, void* data) {
     printf("Text: %s\n", text);
 }
 
-void on_enter_pressed(VenomTextInput* input, const char* text, void* data) {
+void on_enter_pressed(VaxpTextInput* input, const char* text, void* data) {
     printf("Submitted: %s\n", text);
 }
 ```
@@ -124,24 +124,24 @@ void on_enter_pressed(VenomTextInput* input, const char* text, void* data) {
 
 ## Display Widgets
 
-### Label/Text (venom_text)
+### Label/Text (vaxp_text)
 
 Displays text with proper Unicode rendering.
 
 ```c
-venom_text("Hello World")
-venom_text("مرحباً بالعالم")  // Arabic - RTL supported
-venom_text("こんにちは")       // Japanese
+vaxp_text("Hello World")
+vaxp_text("مرحباً بالعالم")  // Arabic - RTL supported
+vaxp_text("こんにちは")       // Japanese
 ```
 
-### Image (venom_image)
+### Image (vaxp_image)
 
 Displays images from files.
 
 ```c
-venom_image(
+vaxp_image(
     .src = "/path/to/image.png",
-    .fit = VENOM_IMAGE_FIT_CONTAIN,
+    .fit = VAXP_IMAGE_FIT_CONTAIN,
     .width = 200,
     .height = 150,
     .corner_radius = 8
@@ -149,11 +149,11 @@ venom_image(
 ```
 
 **Fit Modes:**
-- `VENOM_IMAGE_FIT_CONTAIN` - Scale to fit, letterbox
-- `VENOM_IMAGE_FIT_COVER` - Scale to cover, may crop
-- `VENOM_IMAGE_FIT_FILL` - Stretch to fill
-- `VENOM_IMAGE_FIT_NONE` - Original size
-- `VENOM_IMAGE_FIT_SCALE_DOWN` - Like contain, never upscale
+- `VAXP_IMAGE_FIT_CONTAIN` - Scale to fit, letterbox
+- `VAXP_IMAGE_FIT_COVER` - Scale to cover, may crop
+- `VAXP_IMAGE_FIT_FILL` - Stretch to fill
+- `VAXP_IMAGE_FIT_NONE` - Original size
+- `VAXP_IMAGE_FIT_SCALE_DOWN` - Like contain, never upscale
 
 ---
 
@@ -164,15 +164,15 @@ venom_image(
 Rebuilds UI when state changes.
 
 ```c
-VENOM_BLOC_BUILDER(
+VAXP_BLOC_BUILDER(
     .cubit = my_cubit,
     .builder = my_builder_function,
     .user_data = optional_data
 )
 
-VenomWidget* my_builder_function(void* state, void* user_data) {
+VaxpWidget* my_builder_function(void* state, void* user_data) {
     MyState* s = (MyState*)state;
-    return venom_text(s->message);
+    return vaxp_text(s->message);
 }
 ```
 
@@ -191,23 +191,23 @@ widget->layout.preferred_width = 200;
 widget->layout.preferred_height = 100;
 widget->layout.max_width = 400;
 widget->layout.max_height = 200;
-widget->layout.padding = (VenomInsets){ top, right, bottom, left };
-widget->layout.margin = (VenomInsets){ top, right, bottom, left };
+widget->layout.padding = (VaxpInsets){ top, right, bottom, left };
+widget->layout.margin = (VaxpInsets){ top, right, bottom, left };
 ```
 
 ### Visibility
 
 ```c
-widget->visible = VENOM_TRUE;   // Show widget
-widget->visible = VENOM_FALSE;  // Hide widget
+widget->visible = VAXP_TRUE;   // Show widget
+widget->visible = VAXP_FALSE;  // Hide widget
 ```
 
 ### Focus
 
 ```c
-widget->focusable = VENOM_TRUE;  // Can receive keyboard focus
-venom_focus_set(widget);         // Set focus to widget
-VenomWidget* focused = venom_focus_get();  // Get focused widget
+widget->focusable = VAXP_TRUE;  // Can receive keyboard focus
+vaxp_focus_set(widget);         // Set focus to widget
+VaxpWidget* focused = vaxp_focus_get();  // Get focused widget
 ```
 
 ---
@@ -217,19 +217,19 @@ VenomWidget* focused = venom_focus_get();  // Get focused widget
 ### Direct Creation
 
 ```c
-VenomResultPtr result = venom_button_create();
+VaxpResultPtr result = vaxp_button_create();
 if (result.ok) {
-    VenomButton* btn = (VenomButton*)result.value;
-    venom_button_set_text(btn, "My Button");
-    venom_button_set_on_click(btn, my_handler, NULL);
+    VaxpButton* btn = (VaxpButton*)result.value;
+    vaxp_button_set_text(btn, "My Button");
+    vaxp_button_set_on_click(btn, my_handler, NULL);
 }
 ```
 
-### Using VENOM_CHILDREN
+### Using VAXP_CHILDREN
 
 ```c
 // Automatically manages child array
-.children = VENOM_CHILDREN(
+.children = VAXP_CHILDREN(
     widget1,
     widget2,
     widget3

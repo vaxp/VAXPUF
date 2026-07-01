@@ -1,6 +1,6 @@
 # API Reference
 
-Complete API reference for VENOMUI.
+Complete API reference for VAXPUI.
 
 ---
 
@@ -9,31 +9,31 @@ Complete API reference for VENOMUI.
 ### Initialization
 
 ```c
-VenomResult venom_init(void);
-void venom_shutdown(void);
-const char* venom_version_string(void);
+VaxpResult vaxp_init(void);
+void vaxp_shutdown(void);
+const char* vaxp_version_string(void);
 ```
 
 ### Memory
 
 ```c
-void* venom_alloc(VenomSize size);
-void* venom_realloc(void* ptr, VenomSize old_size, VenomSize new_size);
-void venom_free(void* ptr, VenomSize size);
+void* vaxp_alloc(VaxpSize size);
+void* vaxp_realloc(void* ptr, VaxpSize old_size, VaxpSize new_size);
+void vaxp_free(void* ptr, VaxpSize size);
 
 // Debug
-void venom_memory_dump_stats(void);
+void vaxp_memory_dump_stats(void);
 ```
 
 ### Reference Counting
 
 ```c
-void venom_ref(void* obj);
-void venom_unref(void* obj);
-VenomU32 venom_ref_count(void* obj);
+void vaxp_ref(void* obj);
+void vaxp_unref(void* obj);
+VaxpU32 vaxp_ref_count(void* obj);
 
 // Macro for creating ref-counted objects
-VENOM_REF_NEW(Type, destructor)
+VAXP_REF_NEW(Type, destructor)
 ```
 
 ---
@@ -42,7 +42,7 @@ VENOM_REF_NEW(Type, destructor)
 
 ```c
 // Macro for running application
-VENOM_APP(
+VAXP_APP(
     .title = "Title",
     .width = 800,
     .height = 600,
@@ -50,109 +50,109 @@ VENOM_APP(
 )
 
 // Build function signature
-VenomWidget* (*VenomBuildFunc)(void* data);
+VaxpWidget* (*VaxpBuildFunc)(void* data);
 ```
 
 ---
 
 ## Widgets
 
-### VenomWidget (Base)
+### VaxpWidget (Base)
 
 ```c
-VenomResultPtr venom_widget_create(const VenomWidgetClass* cls);
-void venom_widget_destroy(VenomWidget* widget);
-void venom_widget_invalidate(VenomWidget* widget);
-void venom_widget_invalidate_layout(VenomWidget* widget);
-void venom_widget_measure(VenomWidget* widget, ...);
-void venom_widget_layout(VenomWidget* widget, VenomRectF bounds);
-void venom_widget_draw(VenomWidget* widget, VenomCanvas* canvas);
+VaxpResultPtr vaxp_widget_create(const VaxpWidgetClass* cls);
+void vaxp_widget_destroy(VaxpWidget* widget);
+void vaxp_widget_invalidate(VaxpWidget* widget);
+void vaxp_widget_invalidate_layout(VaxpWidget* widget);
+void vaxp_widget_measure(VaxpWidget* widget, ...);
+void vaxp_widget_layout(VaxpWidget* widget, VaxpRectF bounds);
+void vaxp_widget_draw(VaxpWidget* widget, VaxpCanvas* canvas);
 ```
 
-### VenomButton
+### VaxpButton
 
 ```c
-VenomResultPtr venom_button_create(void);
-void venom_button_set_text(VenomButton* btn, const char* text);
-void venom_button_set_on_click(VenomButton* btn, VenomButtonCallback cb, void* data);
+VaxpResultPtr vaxp_button_create(void);
+void vaxp_button_set_text(VaxpButton* btn, const char* text);
+void vaxp_button_set_on_click(VaxpButton* btn, VaxpButtonCallback cb, void* data);
 
 // Callback signature
-typedef void (*VenomButtonCallback)(VenomButton* btn, void* user_data);
+typedef void (*VaxpButtonCallback)(VaxpButton* btn, void* user_data);
 
 // Macro
-venom_btn(text, .on_click = handler)
+vaxp_btn(text, .on_click = handler)
 ```
 
-### VenomLabel
+### VaxpLabel
 
 ```c
-VenomResultPtr venom_label_create(void);
-void venom_label_set_text(VenomLabel* label, const char* text);
+VaxpResultPtr vaxp_label_create(void);
+void vaxp_label_set_text(VaxpLabel* label, const char* text);
 
 // Macro
-venom_text("Text content")
+vaxp_text("Text content")
 ```
 
-### VenomTextInput
+### VaxpTextInput
 
 ```c
-VenomResultPtr venom_text_input_create(void);
-void venom_text_input_set_text(VenomTextInput* input, const char* text);
-const char* venom_text_input_get_text(const VenomTextInput* input);
-void venom_text_input_set_placeholder(VenomTextInput* input, const char* placeholder);
-void venom_text_input_set_password_mode(VenomTextInput* input, VenomBool password);
-void venom_text_input_set_max_length(VenomTextInput* input, VenomU32 max);
-void venom_text_input_set_on_change(VenomTextInput* input, VenomTextInputCallback cb, void* data);
-void venom_text_input_set_on_submit(VenomTextInput* input, VenomTextInputCallback cb, void* data);
+VaxpResultPtr vaxp_text_input_create(void);
+void vaxp_text_input_set_text(VaxpTextInput* input, const char* text);
+const char* vaxp_text_input_get_text(const VaxpTextInput* input);
+void vaxp_text_input_set_placeholder(VaxpTextInput* input, const char* placeholder);
+void vaxp_text_input_set_password_mode(VaxpTextInput* input, VaxpBool password);
+void vaxp_text_input_set_max_length(VaxpTextInput* input, VaxpU32 max);
+void vaxp_text_input_set_on_change(VaxpTextInput* input, VaxpTextInputCallback cb, void* data);
+void vaxp_text_input_set_on_submit(VaxpTextInput* input, VaxpTextInputCallback cb, void* data);
 
 // Callback signature
-typedef void (*VenomTextInputCallback)(VenomTextInput* input, const char* text, void* data);
+typedef void (*VaxpTextInputCallback)(VaxpTextInput* input, const char* text, void* data);
 
 // Macro
-venom_input(.placeholder = "Enter text", .on_change = handler)
+vaxp_input(.placeholder = "Enter text", .on_change = handler)
 ```
 
-### VenomContainer
+### VaxpContainer
 
 ```c
-VenomResultPtr venom_container_create(VenomLayoutType type);
-void venom_container_add_child(VenomContainer* container, VenomWidget* child);
-void venom_container_remove_child(VenomContainer* container, VenomWidget* child);
-void venom_container_clear(VenomContainer* container);
+VaxpResultPtr vaxp_container_create(VaxpLayoutType type);
+void vaxp_container_add_child(VaxpContainer* container, VaxpWidget* child);
+void vaxp_container_remove_child(VaxpContainer* container, VaxpWidget* child);
+void vaxp_container_clear(VaxpContainer* container);
 
 // Macros
-venom_col(.gap = 10, .children = VENOM_CHILDREN(...))
-venom_row(.gap = 10, .children = VENOM_CHILDREN(...))
-venom_center(.children = VENOM_CHILDREN(...))
+vaxp_col(.gap = 10, .children = VAXP_CHILDREN(...))
+vaxp_row(.gap = 10, .children = VAXP_CHILDREN(...))
+vaxp_center(.children = VAXP_CHILDREN(...))
 ```
 
-### VenomScrollable
+### VaxpScrollable
 
 ```c
-VenomResultPtr venom_scrollable_create(void);
-VenomResult venom_scrollable_set_content(VenomScrollable* scroll, VenomWidget* content);
-void venom_scrollable_get_scroll(const VenomScrollable* scroll, VenomF32* x, VenomF32* y);
-void venom_scrollable_set_scroll(VenomScrollable* scroll, VenomF32 x, VenomF32 y);
-void venom_scrollable_scroll_by(VenomScrollable* scroll, VenomF32 dx, VenomF32 dy);
-void venom_scrollable_ensure_visible(VenomScrollable* scroll, VenomWidget* widget);
-void venom_scrollable_set_direction(VenomScrollable* scroll, VenomScrollDirection dir);
+VaxpResultPtr vaxp_scrollable_create(void);
+VaxpResult vaxp_scrollable_set_content(VaxpScrollable* scroll, VaxpWidget* content);
+void vaxp_scrollable_get_scroll(const VaxpScrollable* scroll, VaxpF32* x, VaxpF32* y);
+void vaxp_scrollable_set_scroll(VaxpScrollable* scroll, VaxpF32 x, VaxpF32 y);
+void vaxp_scrollable_scroll_by(VaxpScrollable* scroll, VaxpF32 dx, VaxpF32 dy);
+void vaxp_scrollable_ensure_visible(VaxpScrollable* scroll, VaxpWidget* widget);
+void vaxp_scrollable_set_direction(VaxpScrollable* scroll, VaxpScrollDirection dir);
 
 // Macro
-venom_scroll(.direction = VENOM_SCROLL_VERTICAL, .content = child)
+vaxp_scroll(.direction = VAXP_SCROLL_VERTICAL, .content = child)
 ```
 
-### VenomImageWidget
+### VaxpImageWidget
 
 ```c
-VenomResultPtr venom_image_load_file(const char* path);
-VenomResultPtr venom_image_widget_create(void);
-VenomResult venom_image_widget_set_image(VenomImageWidget* widget, VenomImageData* image);
-VenomResult venom_image_widget_load(VenomImageWidget* widget, const char* path);
-void venom_image_widget_set_fit(VenomImageWidget* widget, VenomImageFit fit);
-void venom_image_widget_set_corner_radius(VenomImageWidget* widget, VenomF32 radius);
+VaxpResultPtr vaxp_image_load_file(const char* path);
+VaxpResultPtr vaxp_image_widget_create(void);
+VaxpResult vaxp_image_widget_set_image(VaxpImageWidget* widget, VaxpImageData* image);
+VaxpResult vaxp_image_widget_load(VaxpImageWidget* widget, const char* path);
+void vaxp_image_widget_set_fit(VaxpImageWidget* widget, VaxpImageFit fit);
+void vaxp_image_widget_set_corner_radius(VaxpImageWidget* widget, VaxpF32 radius);
 
 // Macro
-venom_image(.src = "path.png", .fit = VENOM_IMAGE_FIT_CONTAIN)
+vaxp_image(.src = "path.png", .fit = VAXP_IMAGE_FIT_CONTAIN)
 ```
 
 ---
@@ -160,13 +160,13 @@ venom_image(.src = "path.png", .fit = VENOM_IMAGE_FIT_CONTAIN)
 ## Focus
 
 ```c
-void venom_focus_init(void);
-void venom_focus_set_root(VenomWidget* root);
-void venom_focus_set(VenomWidget* widget);
-VenomWidget* venom_focus_get(void);
-VenomBool venom_focus_has(VenomWidget* widget);
-void venom_focus_next(void);
-void venom_focus_prev(void);
+void vaxp_focus_init(void);
+void vaxp_focus_set_root(VaxpWidget* root);
+void vaxp_focus_set(VaxpWidget* widget);
+VaxpWidget* vaxp_focus_get(void);
+VaxpBool vaxp_focus_has(VaxpWidget* widget);
+void vaxp_focus_next(void);
+void vaxp_focus_prev(void);
 ```
 
 ---
@@ -174,11 +174,11 @@ void venom_focus_prev(void);
 ## Theme
 
 ```c
-const VenomTheme* venom_theme_get_current(void);
-void venom_theme_set(const VenomTheme* theme);
-const VenomTheme* venom_theme_light(void);
-const VenomTheme* venom_theme_dark(void);
-VenomTheme venom_theme_create(VenomColor primary, VenomColor secondary, VenomBool is_dark);
+const VaxpTheme* vaxp_theme_get_current(void);
+void vaxp_theme_set(const VaxpTheme* theme);
+const VaxpTheme* vaxp_theme_light(void);
+const VaxpTheme* vaxp_theme_dark(void);
+VaxpTheme vaxp_theme_create(VaxpColor primary, VaxpColor secondary, VaxpBool is_dark);
 ```
 
 ---
@@ -188,32 +188,32 @@ VenomTheme venom_theme_create(VenomColor primary, VenomColor secondary, VenomBoo
 ### Cubit
 
 ```c
-VenomCubit* venom_cubit_create(VenomSize state_size, void* initial_state);
-void venom_cubit_destroy(VenomCubit* cubit);
-void venom_cubit_emit(VenomCubit* cubit, void* new_state);
-void venom_cubit_add_listener(VenomCubit* cubit, VenomCubitListener listener, void* data);
-void venom_cubit_remove_listener(VenomCubit* cubit, VenomCubitListener listener);
+VaxpCubit* vaxp_cubit_create(VaxpSize state_size, void* initial_state);
+void vaxp_cubit_destroy(VaxpCubit* cubit);
+void vaxp_cubit_emit(VaxpCubit* cubit, void* new_state);
+void vaxp_cubit_add_listener(VaxpCubit* cubit, VaxpCubitListener listener, void* data);
+void vaxp_cubit_remove_listener(VaxpCubit* cubit, VaxpCubitListener listener);
 
 // Listener signature
-typedef void (*VenomCubitListener)(VenomCubit* cubit, void* state, void* user_data);
+typedef void (*VaxpCubitListener)(VaxpCubit* cubit, void* state, void* user_data);
 
 // Macros
-VENOM_DEFINE_CUBIT(Name, StateType, actions...)
-VENOM_CUBIT_CREATE(Name, StateType, initial_state)
-VENOM_CUBIT_EMIT(cubit, Name, action)
+VAXP_DEFINE_CUBIT(Name, StateType, actions...)
+VAXP_CUBIT_CREATE(Name, StateType, initial_state)
+VAXP_CUBIT_EMIT(cubit, Name, action)
 ```
 
 ### BlocBuilder
 
 ```c
-VENOM_BLOC_BUILDER(
+VAXP_BLOC_BUILDER(
     .cubit = my_cubit,
     .builder = builder_function,
     .user_data = optional_data
 )
 
 // Builder signature
-VenomWidget* (*builder)(void* state, void* user_data);
+VaxpWidget* (*builder)(void* state, void* user_data);
 ```
 
 ---
@@ -223,20 +223,20 @@ VenomWidget* (*builder)(void* state, void* user_data);
 ### Canvas
 
 ```c
-void venom_canvas_save(VenomCanvas* canvas);
-void venom_canvas_restore(VenomCanvas* canvas);
-void venom_canvas_translate(VenomCanvas* canvas, VenomF32 dx, VenomF32 dy);
-void venom_canvas_scale(VenomCanvas* canvas, VenomF32 sx, VenomF32 sy);
-void venom_canvas_rotate(VenomCanvas* canvas, VenomF32 degrees);
-void venom_canvas_clip_rect(VenomCanvas* canvas, VenomRectF rect);
-void venom_canvas_clip_rounded_rect(VenomCanvas* canvas, VenomRectF rect, VenomF32 radius);
-void venom_canvas_clear(VenomCanvas* canvas, VenomColor color);
-void venom_canvas_draw_rect(VenomCanvas* canvas, VenomRectF rect, const VenomPaint* paint);
-void venom_canvas_draw_rounded_rect(VenomCanvas* canvas, VenomRectF rect, VenomF32 radius, const VenomPaint* paint);
-void venom_canvas_draw_circle(VenomCanvas* canvas, VenomF32 cx, VenomF32 cy, VenomF32 r, const VenomPaint* paint);
-void venom_canvas_draw_text(VenomCanvas* canvas, const char* text, VenomF32 x, VenomF32 y, ...);
-void venom_canvas_draw_image(VenomCanvas* canvas, const VenomImage* image, VenomF32 x, VenomF32 y);
-void venom_canvas_flush(VenomCanvas* canvas);
+void vaxp_canvas_save(VaxpCanvas* canvas);
+void vaxp_canvas_restore(VaxpCanvas* canvas);
+void vaxp_canvas_translate(VaxpCanvas* canvas, VaxpF32 dx, VaxpF32 dy);
+void vaxp_canvas_scale(VaxpCanvas* canvas, VaxpF32 sx, VaxpF32 sy);
+void vaxp_canvas_rotate(VaxpCanvas* canvas, VaxpF32 degrees);
+void vaxp_canvas_clip_rect(VaxpCanvas* canvas, VaxpRectF rect);
+void vaxp_canvas_clip_rounded_rect(VaxpCanvas* canvas, VaxpRectF rect, VaxpF32 radius);
+void vaxp_canvas_clear(VaxpCanvas* canvas, VaxpColor color);
+void vaxp_canvas_draw_rect(VaxpCanvas* canvas, VaxpRectF rect, const VaxpPaint* paint);
+void vaxp_canvas_draw_rounded_rect(VaxpCanvas* canvas, VaxpRectF rect, VaxpF32 radius, const VaxpPaint* paint);
+void vaxp_canvas_draw_circle(VaxpCanvas* canvas, VaxpF32 cx, VaxpF32 cy, VaxpF32 r, const VaxpPaint* paint);
+void vaxp_canvas_draw_text(VaxpCanvas* canvas, const char* text, VaxpF32 x, VaxpF32 y, ...);
+void vaxp_canvas_draw_image(VaxpCanvas* canvas, const VaxpImage* image, VaxpF32 x, VaxpF32 y);
+void vaxp_canvas_flush(VaxpCanvas* canvas);
 ```
 
 ---
@@ -246,40 +246,40 @@ void venom_canvas_flush(VenomCanvas* canvas);
 ### Basic Types
 
 ```c
-typedef int8_t   VenomI8;
-typedef int16_t  VenomI16;
-typedef int32_t  VenomI32;
-typedef int64_t  VenomI64;
-typedef uint8_t  VenomU8;
-typedef uint16_t VenomU16;
-typedef uint32_t VenomU32;
-typedef uint64_t VenomU64;
-typedef float    VenomF32;
-typedef double   VenomF64;
-typedef size_t   VenomSize;
-typedef VenomU8  VenomBool;
+typedef int8_t   VaxpI8;
+typedef int16_t  VaxpI16;
+typedef int32_t  VaxpI32;
+typedef int64_t  VaxpI64;
+typedef uint8_t  VaxpU8;
+typedef uint16_t VaxpU16;
+typedef uint32_t VaxpU32;
+typedef uint64_t VaxpU64;
+typedef float    VaxpF32;
+typedef double   VaxpF64;
+typedef size_t   VaxpSize;
+typedef VaxpU8  VaxpBool;
 
-#define VENOM_TRUE  1
-#define VENOM_FALSE 0
+#define VAXP_TRUE  1
+#define VAXP_FALSE 0
 ```
 
 ### Geometry
 
 ```c
-typedef struct VenomColor { VenomU8 r, g, b, a; } VenomColor;
-typedef struct VenomRectF { VenomF32 x, y, width, height; } VenomRectF;
-typedef struct VenomSize2D { VenomF32 width, height; } VenomSize2D;
-typedef struct VenomInsets { VenomF32 top, right, bottom, left; } VenomInsets;
+typedef struct VaxpColor { VaxpU8 r, g, b, a; } VaxpColor;
+typedef struct VaxpRectF { VaxpF32 x, y, width, height; } VaxpRectF;
+typedef struct VaxpSize2D { VaxpF32 width, height; } VaxpSize2D;
+typedef struct VaxpInsets { VaxpF32 top, right, bottom, left; } VaxpInsets;
 ```
 
 ### Result
 
 ```c
-typedef struct VenomResult { VenomBool ok; VenomErrorCode error; } VenomResult;
-typedef struct VenomResultPtr { VenomBool ok; void* value; VenomErrorCode error; } VenomResultPtr;
+typedef struct VaxpResult { VaxpBool ok; VaxpErrorCode error; } VaxpResult;
+typedef struct VaxpResultPtr { VaxpBool ok; void* value; VaxpErrorCode error; } VaxpResultPtr;
 
-#define VENOM_OK_UNIT() ((VenomResult){ .ok = VENOM_TRUE })
-#define VENOM_OK_PTR(val) ((VenomResultPtr){ .ok = VENOM_TRUE, .value = (val) })
-#define VENOM_ERR_UNIT(err) ((VenomResult){ .ok = VENOM_FALSE, .error = (err) })
-#define VENOM_ERR_PTR(err) ((VenomResultPtr){ .ok = VENOM_FALSE, .error = (err) })
+#define VAXP_OK_UNIT() ((VaxpResult){ .ok = VAXP_TRUE })
+#define VAXP_OK_PTR(val) ((VaxpResultPtr){ .ok = VAXP_TRUE, .value = (val) })
+#define VAXP_ERR_UNIT(err) ((VaxpResult){ .ok = VAXP_FALSE, .error = (err) })
+#define VAXP_ERR_PTR(err) ((VaxpResultPtr){ .ok = VAXP_FALSE, .error = (err) })
 ```

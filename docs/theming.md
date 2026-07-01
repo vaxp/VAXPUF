@@ -1,20 +1,20 @@
-# Theming in VENOMUI
+# Theming in VAXPUI
 
-VENOMUI includes a comprehensive theming system for consistent styling.
+VAXPUI includes a comprehensive theming system for consistent styling.
 
 ## Built-in Themes
 
 ### Light Theme (Default)
 
 ```c
-const VenomTheme* theme = venom_theme_light();
+const VaxpTheme* theme = vaxp_theme_light();
 ```
 
 ### Dark Theme
 
 ```c
-const VenomTheme* theme = venom_theme_dark();
-venom_theme_set(theme);
+const VaxpTheme* theme = vaxp_theme_dark();
+vaxp_theme_set(theme);
 ```
 
 ## Using the Theme
@@ -22,17 +22,17 @@ venom_theme_set(theme);
 ### Getting Current Theme
 
 ```c
-const VenomTheme* theme = venom_theme_get_current();
+const VaxpTheme* theme = vaxp_theme_get_current();
 
 // Access colors
-VenomColor bg = theme->colors.background;
-VenomColor primary = theme->colors.primary;
+VaxpColor bg = theme->colors.background;
+VaxpColor primary = theme->colors.primary;
 
 // Access typography
-VenomTextStyle body = theme->typography.body1;
+VaxpTextStyle body = theme->typography.body1;
 
 // Access spacing
-VenomF32 padding = theme->spacing_md;  // 16px
+VaxpF32 padding = theme->spacing_md;  // 16px
 ```
 
 ### Color Palette
@@ -88,19 +88,19 @@ theme->radius_lg  // 16px
 ### Quick Theme from Colors
 
 ```c
-VenomColor primary = { 100, 50, 200, 255 };   // Purple
-VenomColor secondary = { 200, 100, 50, 255 }; // Orange
+VaxpColor primary = { 100, 50, 200, 255 };   // Purple
+VaxpColor secondary = { 200, 100, 50, 255 }; // Orange
 
-VenomTheme my_theme = venom_theme_create(primary, secondary, VENOM_FALSE);
-venom_theme_set(&my_theme);
+VaxpTheme my_theme = vaxp_theme_create(primary, secondary, VAXP_FALSE);
+vaxp_theme_set(&my_theme);
 ```
 
 ### Full Custom Theme
 
 ```c
-static VenomTheme my_theme = {
+static VaxpTheme my_theme = {
     .name = "My Theme",
-    .is_dark = VENOM_FALSE,
+    .is_dark = VAXP_FALSE,
     
     .colors = {
         .primary = { 100, 150, 200, 255 },
@@ -142,7 +142,7 @@ static VenomTheme my_theme = {
 };
 
 // Apply theme
-venom_theme_set(&my_theme);
+vaxp_theme_set(&my_theme);
 ```
 
 ## Pre-defined Colors
@@ -150,34 +150,34 @@ venom_theme_set(&my_theme);
 Material Design colors are available:
 
 ```c
-VENOM_COLOR_BLUE        // { 33, 150, 243, 255 }
-VENOM_COLOR_INDIGO      // { 63, 81, 181, 255 }
-VENOM_COLOR_PURPLE      // { 156, 39, 176, 255 }
-VENOM_COLOR_PINK        // { 233, 30, 99, 255 }
-VENOM_COLOR_RED         // { 244, 67, 54, 255 }
-VENOM_COLOR_ORANGE      // { 255, 152, 0, 255 }
-VENOM_COLOR_YELLOW      // { 255, 235, 59, 255 }
-VENOM_COLOR_GREEN       // { 76, 175, 80, 255 }
-VENOM_COLOR_TEAL        // { 0, 150, 136, 255 }
-VENOM_COLOR_CYAN        // { 0, 188, 212, 255 }
+VAXP_COLOR_BLUE        // { 33, 150, 243, 255 }
+VAXP_COLOR_INDIGO      // { 63, 81, 181, 255 }
+VAXP_COLOR_PURPLE      // { 156, 39, 176, 255 }
+VAXP_COLOR_PINK        // { 233, 30, 99, 255 }
+VAXP_COLOR_RED         // { 244, 67, 54, 255 }
+VAXP_COLOR_ORANGE      // { 255, 152, 0, 255 }
+VAXP_COLOR_YELLOW      // { 255, 235, 59, 255 }
+VAXP_COLOR_GREEN       // { 76, 175, 80, 255 }
+VAXP_COLOR_TEAL        // { 0, 150, 136, 255 }
+VAXP_COLOR_CYAN        // { 0, 188, 212, 255 }
 
 // Grays
-VENOM_COLOR_GRAY_100 through VENOM_COLOR_GRAY_900
+VAXP_COLOR_GRAY_100 through VAXP_COLOR_GRAY_900
 
 // Special
-VENOM_COLOR_WHITE
-VENOM_COLOR_BLACK
-VENOM_COLOR_TRANSPARENT
+VAXP_COLOR_WHITE
+VAXP_COLOR_BLACK
+VAXP_COLOR_TRANSPARENT
 ```
 
 ## Dynamic Theme Switching
 
 ```c
-static VenomBool is_dark = VENOM_FALSE;
+static VaxpBool is_dark = VAXP_FALSE;
 
 void toggle_theme(void) {
     is_dark = !is_dark;
-    venom_theme_set(is_dark ? venom_theme_dark() : venom_theme_light());
+    vaxp_theme_set(is_dark ? vaxp_theme_dark() : vaxp_theme_light());
     // Trigger UI redraw
 }
 ```

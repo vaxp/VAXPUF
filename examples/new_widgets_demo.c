@@ -1,150 +1,150 @@
 /*
- * VENOMUI - Complete Demo using Column Layout
+ * VAXPUI - Complete Demo using Column Layout
  */
-#include <venom/venomui.h>
+#include <vaxp/vaxpui.h>
 #include <stdio.h>
 
-static VenomI32 g_page = 0;
+static VaxpI32 g_page = 0;
 
-static void on_nav(VenomI32 idx, void* d) {
+static void on_nav(VaxpI32 idx, void* d) {
     (void)d;
     printf("Page: %d\n", idx);
     g_page = idx;
-    venom_rebuild();
+    vaxp_rebuild();
 }
 
 /* Table */
-static VenomWidget* make_table(void) {
-    VenomTableColumn cols[] = {
+static VaxpWidget* make_table(void) {
+    VaxpTableColumn cols[] = {
         { .key = "id", .title = "ID", .width = 50 },
         { .key = "name", .title = "Name", .flex = 1 },
         { .key = "status", .title = "Status", .width = 100 },
     };
-    VenomResultPtr r = venom_table_create(cols, 3);
+    VaxpResultPtr r = vaxp_table_create(cols, 3);
     if (!r.ok) return NULL;
-    VenomTable* t = (VenomTable*)r.value;
+    VaxpTable* t = (VaxpTable*)r.value;
     
     const char* r1[] = {"1", "Ahmed", "Active"};
     const char* r2[] = {"2", "Sara", "Pending"};
     const char* r3[] = {"3", "Ali", "Active"};
-    venom_table_add_row(t, r1, 3);
-    venom_table_add_row(t, r2, 3);
-    venom_table_add_row(t, r3, 3);
+    vaxp_table_add_row(t, r1, 3);
+    vaxp_table_add_row(t, r2, 3);
+    vaxp_table_add_row(t, r3, 3);
     
     /* Set flex_grow so it takes remaining space */
-    ((VenomWidget*)t)->layout.flex_grow = 1;
+    ((VaxpWidget*)t)->layout.flex_grow = 1;
     
-    return (VenomWidget*)t;
+    return (VaxpWidget*)t;
 }
 
 /* Chart */
-static VenomWidget* make_chart(void) {
-    VenomResultPtr r = venom_chart_create(VENOM_CHART_BAR);
+static VaxpWidget* make_chart(void) {
+    VaxpResultPtr r = vaxp_chart_create(VAXP_CHART_BAR);
     if (!r.ok) return NULL;
-    VenomChart* c = (VenomChart*)r.value;
+    VaxpChart* c = (VaxpChart*)r.value;
     
     static const char* labels[] = {"A", "B", "C", "D"};
-    static VenomF32 vals[] = {30, 60, 45, 80};
-    venom_chart_set_labels(c, labels, 4);
-    VenomDataset ds = { .label = "Data", .values = vals, .value_count = 4, .color = venom_color_rgb(80, 140, 220) };
-    venom_chart_add_dataset(c, &ds);
+    static VaxpF32 vals[] = {30, 60, 45, 80};
+    vaxp_chart_set_labels(c, labels, 4);
+    VaxpDataset ds = { .label = "Data", .values = vals, .value_count = 4, .color = vaxp_color_rgb(80, 140, 220) };
+    vaxp_chart_add_dataset(c, &ds);
     
-    ((VenomWidget*)c)->layout.flex_grow = 1;
+    ((VaxpWidget*)c)->layout.flex_grow = 1;
     
-    return (VenomWidget*)c;
+    return (VaxpWidget*)c;
 }
 
 /* Carousel */
-static VenomWidget* make_carousel(void) {
-    VenomResultPtr r = venom_carousel_create();
+static VaxpWidget* make_carousel(void) {
+    VaxpResultPtr r = vaxp_carousel_create();
     if (!r.ok) return NULL;
-    VenomCarousel* carousel = (VenomCarousel*)r.value;
+    VaxpCarousel* carousel = (VaxpCarousel*)r.value;
     
-    VenomResultPtr s1 = venom_container_create();
+    VaxpResultPtr s1 = vaxp_container_create();
     if (s1.ok) {
-        venom_container_set_background((VenomContainer*)s1.value, venom_color_rgb(60, 120, 220));
-        venom_carousel_add_item(carousel, (VenomWidget*)s1.value);
+        vaxp_container_set_background((VaxpContainer*)s1.value, vaxp_color_rgb(60, 120, 220));
+        vaxp_carousel_add_item(carousel, (VaxpWidget*)s1.value);
     }
-    VenomResultPtr s2 = venom_container_create();
+    VaxpResultPtr s2 = vaxp_container_create();
     if (s2.ok) {
-        venom_container_set_background((VenomContainer*)s2.value, venom_color_rgb(60, 180, 100));
-        venom_carousel_add_item(carousel, (VenomWidget*)s2.value);
+        vaxp_container_set_background((VaxpContainer*)s2.value, vaxp_color_rgb(60, 180, 100));
+        vaxp_carousel_add_item(carousel, (VaxpWidget*)s2.value);
     }
-    VenomResultPtr s3 = venom_container_create();
+    VaxpResultPtr s3 = vaxp_container_create();
     if (s3.ok) {
-        venom_container_set_background((VenomContainer*)s3.value, venom_color_rgb(240, 140, 60));
-        venom_carousel_add_item(carousel, (VenomWidget*)s3.value);
+        vaxp_container_set_background((VaxpContainer*)s3.value, vaxp_color_rgb(240, 140, 60));
+        vaxp_carousel_add_item(carousel, (VaxpWidget*)s3.value);
     }
     
-    venom_carousel_set_auto_play(carousel, VENOM_TRUE, 2000);
-    ((VenomWidget*)carousel)->layout.flex_grow = 1;
+    vaxp_carousel_set_auto_play(carousel, VAXP_TRUE, 2000);
+    ((VaxpWidget*)carousel)->layout.flex_grow = 1;
     
-    return (VenomWidget*)carousel;
+    return (VaxpWidget*)carousel;
 }
 
 /* Build with Column layout */
-static VenomWidget* build(void* d) {
+static VaxpWidget* build(void* d) {
     (void)d;
     
     /* Use Column instead of Stack */
-    VenomResultPtr cr = venom_container_create_column();
+    VaxpResultPtr cr = vaxp_container_create_column();
     if (!cr.ok) return NULL;
-    VenomContainer* col = (VenomContainer*)cr.value;
-    venom_container_set_gap(col, 0);
+    VaxpContainer* col = (VaxpContainer*)cr.value;
+    vaxp_container_set_gap(col, 0);
     
     /* AppBar */
-    VenomResultPtr ar = venom_appbar_create("VENOMUI Demo");
+    VaxpResultPtr ar = vaxp_appbar_create("VAXPUI Demo");
     if (ar.ok) {
-        VenomAppBar* bar = (VenomAppBar*)ar.value;
-        venom_appbar_set_subtitle(bar, "All Widgets");
-        venom_appbar_set_background(bar, venom_color_rgb(55, 65, 85));
-        VenomResult res = venom_widget_add_child((VenomWidget*)col, (VenomWidget*)bar);
-        printf("Add AppBar: %s, col children: %u\n", res.ok ? "OK" : "FAIL", ((VenomWidget*)col)->children_count);
+        VaxpAppBar* bar = (VaxpAppBar*)ar.value;
+        vaxp_appbar_set_subtitle(bar, "All Widgets");
+        vaxp_appbar_set_background(bar, vaxp_color_rgb(55, 65, 85));
+        VaxpResult res = vaxp_widget_add_child((VaxpWidget*)col, (VaxpWidget*)bar);
+        printf("Add AppBar: %s, col children: %u\n", res.ok ? "OK" : "FAIL", ((VaxpWidget*)col)->children_count);
     }
     
     /* Content */
-    VenomWidget* content = NULL;
+    VaxpWidget* content = NULL;
     switch (g_page) {
         case 0: content = make_table(); break;
         case 1: content = make_chart(); break;
         case 2: content = make_carousel(); break;
     }
     if (content) {
-        VenomResult res = venom_widget_add_child((VenomWidget*)col, content);
-        printf("Add Content: %s, col children: %u\n", res.ok ? "OK" : "FAIL", ((VenomWidget*)col)->children_count);
+        VaxpResult res = vaxp_widget_add_child((VaxpWidget*)col, content);
+        printf("Add Content: %s, col children: %u\n", res.ok ? "OK" : "FAIL", ((VaxpWidget*)col)->children_count);
     }
     
     /* BottomNav */
-    VenomNavItem items[] = {
+    VaxpNavItem items[] = {
         { .icon = "T", .label = "Table" },
         { .icon = "C", .label = "Chart" },
         { .icon = "S", .label = "Slides" },
     };
-    VenomResultPtr nr = venom_bottom_nav_create(items, 3);
+    VaxpResultPtr nr = vaxp_bottom_nav_create(items, 3);
     if (nr.ok) {
-        VenomBottomNav* nav = (VenomBottomNav*)nr.value;
-        venom_bottom_nav_set_selected(nav, g_page);
-        venom_bottom_nav_set_on_change(nav, on_nav, NULL);
-        VenomResult res = venom_widget_add_child((VenomWidget*)col, (VenomWidget*)nav);
-        printf("Add BottomNav: %s, col children: %u\n", res.ok ? "OK" : "FAIL", ((VenomWidget*)col)->children_count);
+        VaxpBottomNav* nav = (VaxpBottomNav*)nr.value;
+        vaxp_bottom_nav_set_selected(nav, g_page);
+        vaxp_bottom_nav_set_on_change(nav, on_nav, NULL);
+        VaxpResult res = vaxp_widget_add_child((VaxpWidget*)col, (VaxpWidget*)nav);
+        printf("Add BottomNav: %s, col children: %u\n", res.ok ? "OK" : "FAIL", ((VaxpWidget*)col)->children_count);
     }
     
-    printf("==> Column has %u children\n", ((VenomWidget*)col)->children_count);
+    printf("==> Column has %u children\n", ((VaxpWidget*)col)->children_count);
     
-    return (VenomWidget*)col;
+    return (VaxpWidget*)col;
 }
 
 int main(void) {
     setbuf(stdout, NULL);  /* Disable buffering */
-    printf("=== VENOMUI Demo (Column Layout) ===\n");
+    printf("=== VAXPUI Demo (Column Layout) ===\n");
     
-    VenomAppConfig cfg = {
+    VaxpAppConfig cfg = {
         .title = "Complete Demo",
         .width = 500,
         .height = 600,
-        .background = venom_color_rgb(240, 242, 245),
+        .background = vaxp_color_rgb(240, 242, 245),
         .build = build,
     };
     
-    return venom_run_app(&cfg);
+    return vaxp_run_app(&cfg);
 }

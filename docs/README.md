@@ -1,6 +1,6 @@
-# VENOMUI Documentation
+# VAXPUI Documentation
 
-Welcome to VENOMUI - A high-performance, Flutter-like GUI framework for Linux written in C.
+Welcome to VAXPUI - A high-performance, Flutter-like GUI framework for Linux written in C.
 
 ## 📚 Documentation
 
@@ -17,19 +17,19 @@ Welcome to VENOMUI - A high-performance, Flutter-like GUI framework for Linux wr
 ## 🚀 Quick Example
 
 ```c
-#include <venom/venomui.h>
+#include <vaxp/vaxpui.h>
 
-VenomWidget* build_app(void* data) {
-    return venom_center(
-        .children = VENOM_CHILDREN(
-            venom_text("مرحباً بالعالم!"),
-            venom_btn("Click Me", .on_click = handle_click)
+VaxpWidget* build_app(void* data) {
+    return vaxp_center(
+        .children = VAXP_CHILDREN(
+            vaxp_text("مرحباً بالعالم!"),
+            vaxp_btn("Click Me", .on_click = handle_click)
         )
     );
 }
 
 int main(void) {
-    return VENOM_APP(
+    return VAXP_APP(
         .title = "My App",
         .width = 800,
         .height = 600,
@@ -41,7 +41,7 @@ int main(void) {
 ## 🏗️ Architecture
 
 ```
-VENOMUI
+VAXPUI
 ├── Core (Memory, Types, Threading)
 ├── Backend (X11, Events, Windows)
 ├── Graphics (Cairo + Pango)

@@ -1,4 +1,4 @@
-# Getting Started with VENOMUI
+# Getting Started with VAXPUI
 
 ## Installation
 
@@ -13,8 +13,8 @@ sudo apt install libx11-dev libcairo2-dev libpango1.0-dev libpng-dev
 ### Building the Library
 
 ```bash
-git clone https://github.com/VAXP/venomui.git
-cd venomui
+git clone https://github.com/VAXP/vaxpui.git
+cd vaxpui
 meson setup build
 meson compile -C build
 ```
@@ -24,21 +24,21 @@ meson compile -C build
 ### 1. Simple Hello World
 
 ```c
-#include <venom/venomui.h>
+#include <vaxp/vaxpui.h>
 
-VenomWidget* build_app(void* data) {
+VaxpWidget* build_app(void* data) {
     (void)data;
     
-    return venom_center(
-        .background = VENOM_LIGHT,
-        .children = VENOM_CHILDREN(
-            venom_text("Hello, VENOMUI!")
+    return vaxp_center(
+        .background = VAXP_LIGHT,
+        .children = VAXP_CHILDREN(
+            vaxp_text("Hello, VAXPUI!")
         )
     );
 }
 
 int main(void) {
-    return VENOM_APP(
+    return VAXP_APP(
         .title = "Hello World",
         .width = 400,
         .height = 300,
@@ -50,21 +50,21 @@ int main(void) {
 ### 2. Compile and Run
 
 ```bash
-cc -o hello hello.c $(pkg-config --cflags --libs venomui)
+cc -o hello hello.c $(pkg-config --cflags --libs vaxpui)
 ./hello
 ```
 
 ## Application Structure
 
-### The VENOM_APP Macro
+### The VAXP_APP Macro
 
 ```c
-VENOM_APP(
+VAXP_APP(
     .title = "Window Title",    // Window title
     .width = 800,               // Initial width
     .height = 600,              // Initial height
     .build = build_function,    // Widget builder function
-    .debug = VENOM_TRUE,        // Enable debug output
+    .debug = VAXP_TRUE,        // Enable debug output
 )
 ```
 
@@ -73,13 +73,13 @@ VENOM_APP(
 The build function creates your UI tree:
 
 ```c
-VenomWidget* build_app(void* data) {
+VaxpWidget* build_app(void* data) {
     // Return the root widget of your UI
-    return venom_col(
+    return vaxp_col(
         .gap = 10,
-        .children = VENOM_CHILDREN(
-            venom_text("Title"),
-            venom_btn("Button"),
+        .children = VAXP_CHILDREN(
+            vaxp_text("Title"),
+            vaxp_btn("Button"),
         )
     );
 }
@@ -91,42 +91,42 @@ VenomWidget* build_app(void* data) {
 
 ```c
 // Vertical layout
-venom_col(
+vaxp_col(
     .gap = 10,           // Space between children
     .padding = { 20, 20, 20, 20 },
-    .children = VENOM_CHILDREN(...)
+    .children = VAXP_CHILDREN(...)
 )
 
 // Horizontal layout
-venom_row(
+vaxp_row(
     .gap = 10,
-    .children = VENOM_CHILDREN(...)
+    .children = VAXP_CHILDREN(...)
 )
 
 // Centered layout
-venom_center(
-    .children = VENOM_CHILDREN(...)
+vaxp_center(
+    .children = VAXP_CHILDREN(...)
 )
 ```
 
 ### Text
 
 ```c
-venom_text("Hello World")
+vaxp_text("Hello World")
 
 // With styling (via theme)
-VenomWidget* label = venom_text("Styled Text");
+VaxpWidget* label = vaxp_text("Styled Text");
 ```
 
 ### Buttons
 
 ```c
-venom_btn("Click Me",
+vaxp_btn("Click Me",
     .on_click = handle_click,
-    .color = VENOM_PRIMARY
+    .color = VAXP_PRIMARY
 )
 
-static void handle_click(VenomButton* btn, void* data) {
+static void handle_click(VaxpButton* btn, void* data) {
     printf("Button clicked!\n");
 }
 ```
@@ -134,13 +134,13 @@ static void handle_click(VenomButton* btn, void* data) {
 ### Text Input
 
 ```c
-venom_input(
+vaxp_input(
     .placeholder = "Enter text...",
     .on_change = on_text_changed,
     .on_submit = on_enter_pressed
 )
 
-static void on_text_changed(VenomTextInput* input, const char* text, void* data) {
+static void on_text_changed(VaxpTextInput* input, const char* text, void* data) {
     printf("Text: %s\n", text);
 }
 ```
@@ -175,7 +175,7 @@ static void on_text_changed(VenomTextInput* input, const char* text, void* data)
 
 ### Constant Widgets
 
-For static UI elements that don't change between rebuilds (like titles, icons, or static buttons), you can use `VENOM_CONST` to prevent unnecessary reallocation.
+For static UI elements that don't change between rebuilds (like titles, icons, or static buttons), you can use `VAXP_CONST` to prevent unnecessary reallocation.
 
 **Why use it?**
 - Prevents destroying and recreating widgets every frame.
@@ -185,21 +185,21 @@ For static UI elements that don't change between rebuilds (like titles, icons, o
 **Example:**
 
 ```c
-VenomWidget* build_app(void* data) {
-    return venom_center(
-        .children = VENOM_CHILDREN(
+VaxpWidget* build_app(void* data) {
+    return vaxp_center(
+        .children = VAXP_CHILDREN(
             /* ✨ This label is created once and reused forever */
-            VENOM_CONST(venom_text("Static Title", .size = 24)),
+            VAXP_CONST(vaxp_text("Static Title", .size = 24)),
             
             /* ⚠️ This label is recreated every build because it changes */
-            venom_text(dynamic_loop_counter_string),
+            vaxp_text(dynamic_loop_counter_string),
             
             /* ✨ Complex sub-trees can also be const */
-            VENOM_CONST(venom_row(
+            VAXP_CONST(vaxp_row(
                 .gap = 10, 
-                .children = VENOM_CHILDREN(
-                    venom_btn("Static Button 1"),
-                    venom_btn("Static Button 2")
+                .children = VAXP_CHILDREN(
+                    vaxp_btn("Static Button 1"),
+                    vaxp_btn("Static Button 2")
                 )
             ))
         )
@@ -207,5 +207,5 @@ VenomWidget* build_app(void* data) {
 }
 ```
 
-The `VENOM_CONST` macro automatically generates a unique key for the widget based on its location in the code file.
+The `VAXP_CONST` macro automatically generates a unique key for the widget based on its location in the code file.
 

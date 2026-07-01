@@ -1,5 +1,5 @@
 /*
- * VENOMUI - Desktop Panel Demo
+ * VAXPUI - Desktop Panel Demo
  * 
  * Real top panel with popup control center.
  */
@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <venom/venomui.h>
+#include <vaxp/vaxpui.h>
 
 /* ============================================================================
  * STATE
@@ -36,7 +36,7 @@ static void update_time(void) {
  * CALLBACKS
  * ============================================================================ */
 
-static void on_control_center_click(VenomButton* btn, void* data) {
+static void on_control_center_click(VaxpButton* btn, void* data) {
     (void)btn; (void)data;
     
     if (g_cc_open) {
@@ -56,7 +56,7 @@ static void on_control_center_click(VenomButton* btn, void* data) {
  * BUILD PANEL UI (Simple horizontal row)
  * ============================================================================ */
 
-static VenomWidget* build_panel(void* user_data) {
+static VaxpWidget* build_panel(void* user_data) {
     (void)user_data;
     
     update_time();
@@ -69,38 +69,38 @@ static VenomWidget* build_panel(void* user_data) {
     snprintf(batt_str, sizeof(batt_str), "🔋 %d%%", g_battery);
     
     /* Single horizontal row */
-    return venom_row(
+    return vaxp_row(
         .gap = 12,
-        .padding = (VenomInsets){6, 12, 6, 12},
-        .background = venom_color_rgba(20, 20, 30, 250),
-        .align = VENOM_ALIGN_CENTER,
-        .children = VENOM_CHILDREN(
+        .padding = (VaxpInsets){6, 12, 6, 12},
+        .background = vaxp_color_rgba(20, 20, 30, 250),
+        .align = VAXP_ALIGN_CENTER,
+        .children = VAXP_CHILDREN(
             
             /* Left: Logo */
-            venom_text("🐍 VENOM", .size = 11, .color = venom_color_rgba(255, 255, 255, 180)),
+            vaxp_text("🐍 VAXP", .size = 11, .color = vaxp_color_rgba(255, 255, 255, 180)),
             
             /* Center: Spacer */
-            venom_spacer(),
+            vaxp_spacer(),
             
             /* Center: Clock */
-            venom_text(g_time_str, 
+            vaxp_text(g_time_str, 
                 .size = 12,
-                .color = venom_color_rgb(255, 255, 255)
+                .color = vaxp_color_rgb(255, 255, 255)
             ),
             
             /* Center: Spacer */
-            venom_spacer(),
+            vaxp_spacer(),
             
             /* Right: System tray icons */
-            venom_text(g_wifi_on ? "📶" : "📴", .size = 11),
-            venom_text(g_bluetooth_on ? "🔵" : "⚫", .size = 11),
-            venom_text(vol_str, .size = 10, .color = venom_color_rgb(255, 255, 255)),
-            venom_text(batt_str, .size = 10, .color = venom_color_rgb(255, 255, 255)),
+            vaxp_text(g_wifi_on ? "📶" : "📴", .size = 11),
+            vaxp_text(g_bluetooth_on ? "🔵" : "⚫", .size = 11),
+            vaxp_text(vol_str, .size = 10, .color = vaxp_color_rgb(255, 255, 255)),
+            vaxp_text(batt_str, .size = 10, .color = vaxp_color_rgb(255, 255, 255)),
             
             /* Control Center button */
-            venom_btn("⚙",
-                .color = venom_color_rgba(255, 255, 255, 30),
-                .text_color = venom_color_rgb(255, 255, 255),
+            vaxp_btn("⚙",
+                .color = vaxp_color_rgba(255, 255, 255, 30),
+                .text_color = vaxp_color_rgb(255, 255, 255),
                 .corner_radius = 6,
                 .on_click = on_control_center_click
             )
@@ -114,14 +114,14 @@ static VenomWidget* build_panel(void* user_data) {
 
 int main(void) {
     printf("===========================================\n");
-    printf("   VENOMUI Desktop Panel\n");
+    printf("   VAXPUI Desktop Panel\n");
     printf("   Click ⚙ to open Control Center\n");
     printf("===========================================\n\n");
     
-    return VENOM_PANEL_APP(
-        .title = "VENOMUI Panel",
+    return VAXP_PANEL_APP(
+        .title = "VAXPUI Panel",
         .height = 38,
         .build = build_panel,
-        .debug = VENOM_TRUE
+        .debug = VAXP_TRUE
     );
 }

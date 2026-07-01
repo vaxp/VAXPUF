@@ -1,8 +1,8 @@
-# VENOMUI
+# VAXPUI
 
 **High-Performance GUI Framework for C**
 
-VENOMUI is a feature-rich GUI framework designed for:
+VAXPUI is a feature-rich GUI framework designed for:
 - 🧹 **Strict Memory Management** - Reference counting with leak detection
 - 🎨 **High Performance Rendering** - Built on Cairo/Skia
 - 🖥️ **Native Access** - Direct X11/Wayland integration
@@ -40,29 +40,29 @@ VENOMUI is a feature-rich GUI framework designed for:
 ## Quick Example
 
 ```c
-#include <venomui.h>
+#include <vaxpui.h>
 
-void on_click(VenomWidget* btn, void* data) {
-    printf("Hello VENOMUI!\n");
+void on_click(VaxpWidget* btn, void* data) {
+    printf("Hello VAXPUI!\n");
 }
 
 int main(void) {
-    venom_init();
+    vaxp_init();
     
-    VenomWindow* window = venom_window_create("My App", 800, 600);
+    VaxpWindow* window = vaxp_window_create("My App", 800, 600);
     
-    VenomWidget* content = venom_container(
-        .direction = VENOM_DIRECTION_VERTICAL,
-        .padding = (VenomInsets){ 20, 20, 20, 20 },
+    VaxpWidget* content = vaxp_container(
+        .direction = VAXP_DIRECTION_VERTICAL,
+        .padding = (VaxpInsets){ 20, 20, 20, 20 },
         .spacing = 16
     );
     
-    venom_container_add_child(content, venom_label(.text = "Welcome!"));
-    venom_container_add_child(content, venom_button(.label = "Click Me", .on_click = on_click));
+    vaxp_container_add_child(content, vaxp_label(.text = "Welcome!"));
+    vaxp_container_add_child(content, vaxp_button(.label = "Click Me", .on_click = on_click));
     
-    venom_window_set_content(window, content);
-    venom_app_run();
-    venom_shutdown();
+    vaxp_window_set_content(window, content);
+    vaxp_app_run();
+    vaxp_shutdown();
     
     return 0;
 }
@@ -85,8 +85,8 @@ meson compile -C build
 ## Project Structure
 
 ```
-VENOMUI/
-├── include/venom/
+VAXPUI/
+├── include/vaxp/
 │   ├── core/           # Types, Memory, Ref counting
 │   ├── backend/        # X11/Wayland abstraction
 │   ├── graphics/       # Canvas API

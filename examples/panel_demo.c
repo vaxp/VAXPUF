@@ -1,5 +1,5 @@
 /*
- * VENOMUI - Desktop Panel Demo
+ * VAXPUI - Desktop Panel Demo
  * 
  * A demo of a desktop panel shell component:
  * - Top panel with clock and battery indicator
@@ -27,11 +27,11 @@
 #include <GL/gl.h>
 #include <GL/glx.h>
 
-#include "venom/core/venom_types.h"
-#include "venom/core/venom_result.h"
-#include "venom/core/venom_ref.h"
-#include "venom/graphics/venom_canvas.h"
-#include "venom/graphics/venom_canvas_opengl.h"
+#include "vaxp/core/vaxp_types.h"
+#include "vaxp/core/vaxp_result.h"
+#include "vaxp/core/vaxp_ref.h"
+#include "vaxp/graphics/vaxp_canvas.h"
+#include "vaxp/graphics/vaxp_canvas_opengl.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -50,7 +50,7 @@ static struct {
     
     /* Control Center popup window */
     Window cc_window;
-    VenomCanvas* cc_canvas;
+    VaxpCanvas* cc_canvas;
     int cc_visible;
 } g_state = {0};
 
@@ -93,55 +93,55 @@ static void get_time_string(char* buf, size_t size) {
  * DRAWING HELPERS
  * ============================================================================ */
 
-static void draw_battery_icon(VenomCanvas* canvas, float x, float y, int percent, int charging) {
-    VenomPaint outline = venom_paint_stroke(venom_color_rgba(255, 255, 255, 200), 1.5f);
-    VenomRectF body = { x, y, 20, 10 };
-    venom_canvas_draw_rounded_rect(canvas, body, 2.0f, &outline);
+static void draw_battery_icon(VaxpCanvas* canvas, float x, float y, int percent, int charging) {
+    VaxpPaint outline = vaxp_paint_stroke(vaxp_color_rgba(255, 255, 255, 200), 1.5f);
+    VaxpRectF body = { x, y, 20, 10 };
+    vaxp_canvas_draw_rounded_rect(canvas, body, 2.0f, &outline);
     
-    VenomPaint tip_paint = venom_paint_fill(venom_color_rgba(255, 255, 255, 200));
-    VenomRectF tip = { x + 20, y + 2.5f, 2, 5 };
-    venom_canvas_draw_rect(canvas, tip, &tip_paint);
+    VaxpPaint tip_paint = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, 200));
+    VaxpRectF tip = { x + 20, y + 2.5f, 2, 5 };
+    vaxp_canvas_draw_rect(canvas, tip, &tip_paint);
     
-    VenomColor fill_color;
-    if (percent > 50) fill_color = venom_color_rgba(80, 200, 120, 255);
-    else if (percent > 20) fill_color = venom_color_rgba(255, 180, 50, 255);
-    else fill_color = venom_color_rgba(255, 80, 80, 255);
+    VaxpColor fill_color;
+    if (percent > 50) fill_color = vaxp_color_rgba(80, 200, 120, 255);
+    else if (percent > 20) fill_color = vaxp_color_rgba(255, 180, 50, 255);
+    else fill_color = vaxp_color_rgba(255, 80, 80, 255);
     
-    VenomPaint fill = venom_paint_fill(fill_color);
+    VaxpPaint fill = vaxp_paint_fill(fill_color);
     float fill_width = (percent / 100.0f) * 16.0f;
-    VenomRectF fill_rect = { x + 2, y + 2, fill_width, 6 };
-    venom_canvas_draw_rect(canvas, fill_rect, &fill);
+    VaxpRectF fill_rect = { x + 2, y + 2, fill_width, 6 };
+    vaxp_canvas_draw_rect(canvas, fill_rect, &fill);
     
     if (charging) {
-        VenomPaint bolt = venom_paint_fill(venom_color_rgba(255, 255, 255, 255));
-        venom_canvas_draw_circle(canvas, x + 10, y + 5, 2.5f, &bolt);
+        VaxpPaint bolt = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, 255));
+        vaxp_canvas_draw_circle(canvas, x + 10, y + 5, 2.5f, &bolt);
     }
 }
 
-static void draw_control_center_icon(VenomCanvas* canvas, float x, float y, int hovered) {
-    VenomU8 alpha = hovered ? 255 : 180;
-    VenomPaint paint = venom_paint_fill(venom_color_rgba(255, 255, 255, alpha));
+static void draw_control_center_icon(VaxpCanvas* canvas, float x, float y, int hovered) {
+    VaxpU8 alpha = hovered ? 255 : 180;
+    VaxpPaint paint = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, alpha));
     
     for (int i = 0; i < 3; i++) {
-        VenomRectF line = { x, y + i * 4, 12, 2 };
-        venom_canvas_draw_rounded_rect(canvas, line, 1.0f, &paint);
+        VaxpRectF line = { x, y + i * 4, 12, 2 };
+        vaxp_canvas_draw_rounded_rect(canvas, line, 1.0f, &paint);
     }
 }
 
-static void draw_control_center_content(VenomCanvas* canvas, int width, int height) {
+static void draw_control_center_content(VaxpCanvas* canvas, int width, int height) {
     /* Background */
-    VenomPaint bg = venom_paint_fill(venom_color_rgba(30, 30, 40, 250));
-    VenomRectF bg_rect = { 0, 0, (float)width, (float)height };
-    venom_canvas_draw_rounded_rect(canvas, bg_rect, 16.0f, &bg);
+    VaxpPaint bg = vaxp_paint_fill(vaxp_color_rgba(30, 30, 40, 250));
+    VaxpRectF bg_rect = { 0, 0, (float)width, (float)height };
+    vaxp_canvas_draw_rounded_rect(canvas, bg_rect, 16.0f, &bg);
     
     /* Border */
-    VenomPaint border = venom_paint_stroke(venom_color_rgba(100, 100, 120, 100), 1.0f);
-    venom_canvas_draw_rounded_rect(canvas, bg_rect, 16.0f, &border);
+    VaxpPaint border = vaxp_paint_stroke(vaxp_color_rgba(100, 100, 120, 100), 1.0f);
+    vaxp_canvas_draw_rounded_rect(canvas, bg_rect, 16.0f, &border);
     
     /* Title placeholder */
-    VenomPaint title_paint = venom_paint_fill(venom_color_rgba(255, 255, 255, 255));
-    VenomRectF title_rect = { 20, 15, 120, 16 };
-    venom_canvas_draw_rounded_rect(canvas, title_rect, 4.0f, &title_paint);
+    VaxpPaint title_paint = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, 255));
+    VaxpRectF title_rect = { 20, 15, 120, 16 };
+    vaxp_canvas_draw_rounded_rect(canvas, title_rect, 4.0f, &title_paint);
     
     /* Quick toggles row */
     float toggle_y = 50;
@@ -152,69 +152,69 @@ static void draw_control_center_content(VenomCanvas* canvas, int width, int heig
     for (int i = 0; i < 4; i++) {
         float tx = 15 + i * (toggle_size + toggle_gap);
         
-        VenomColor toggle_color = toggle_states[i] 
-            ? venom_color_rgba(100, 150, 255, 255) 
-            : venom_color_rgba(60, 60, 70, 255);
+        VaxpColor toggle_color = toggle_states[i] 
+            ? vaxp_color_rgba(100, 150, 255, 255) 
+            : vaxp_color_rgba(60, 60, 70, 255);
         
-        VenomPaint toggle_paint = venom_paint_fill(toggle_color);
-        VenomRectF toggle_rect = { tx, toggle_y, toggle_size, toggle_size };
-        venom_canvas_draw_rounded_rect(canvas, toggle_rect, 12.0f, &toggle_paint);
+        VaxpPaint toggle_paint = vaxp_paint_fill(toggle_color);
+        VaxpRectF toggle_rect = { tx, toggle_y, toggle_size, toggle_size };
+        vaxp_canvas_draw_rounded_rect(canvas, toggle_rect, 12.0f, &toggle_paint);
         
         /* Icon */
-        VenomPaint icon_paint = venom_paint_fill(venom_color_rgba(255, 255, 255, 200));
-        venom_canvas_draw_circle(canvas, tx + toggle_size/2, toggle_y + 22, 10, &icon_paint);
+        VaxpPaint icon_paint = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, 200));
+        vaxp_canvas_draw_circle(canvas, tx + toggle_size/2, toggle_y + 22, 10, &icon_paint);
         
         /* Label placeholder */
-        VenomPaint label = venom_paint_fill(venom_color_rgba(255, 255, 255, 150));
-        VenomRectF label_rect = { tx + 10, toggle_y + toggle_size - 14, toggle_size - 20, 8 };
-        venom_canvas_draw_rounded_rect(canvas, label_rect, 2.0f, &label);
+        VaxpPaint label = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, 150));
+        VaxpRectF label_rect = { tx + 10, toggle_y + toggle_size - 14, toggle_size - 20, 8 };
+        vaxp_canvas_draw_rounded_rect(canvas, label_rect, 2.0f, &label);
     }
     
     /* Brightness slider */
     float slider_y = toggle_y + toggle_size + 20;
-    VenomPaint slider_bg = venom_paint_fill(venom_color_rgba(60, 60, 70, 255));
-    VenomRectF slider_track = { 15, slider_y, width - 30, 35 };
-    venom_canvas_draw_rounded_rect(canvas, slider_track, 10.0f, &slider_bg);
+    VaxpPaint slider_bg = vaxp_paint_fill(vaxp_color_rgba(60, 60, 70, 255));
+    VaxpRectF slider_track = { 15, slider_y, width - 30, 35 };
+    vaxp_canvas_draw_rounded_rect(canvas, slider_track, 10.0f, &slider_bg);
     
-    VenomPaint slider_fill = venom_paint_fill(venom_color_rgba(255, 200, 100, 255));
-    VenomRectF slider_value = { 15, slider_y, (width - 30) * 0.7f, 35 };
-    venom_canvas_draw_rounded_rect(canvas, slider_value, 10.0f, &slider_fill);
+    VaxpPaint slider_fill = vaxp_paint_fill(vaxp_color_rgba(255, 200, 100, 255));
+    VaxpRectF slider_value = { 15, slider_y, (width - 30) * 0.7f, 35 };
+    vaxp_canvas_draw_rounded_rect(canvas, slider_value, 10.0f, &slider_fill);
     
-    VenomPaint sun = venom_paint_fill(venom_color_rgba(255, 255, 255, 255));
-    venom_canvas_draw_circle(canvas, 35, slider_y + 17, 7, &sun);
+    VaxpPaint sun = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, 255));
+    vaxp_canvas_draw_circle(canvas, 35, slider_y + 17, 7, &sun);
     
     /* Volume slider */
     float vol_y = slider_y + 50;
-    venom_canvas_draw_rounded_rect(canvas, (VenomRectF){ 15, vol_y, width - 30, 35 }, 10.0f, &slider_bg);
+    vaxp_canvas_draw_rounded_rect(canvas, (VaxpRectF){ 15, vol_y, width - 30, 35 }, 10.0f, &slider_bg);
     
-    VenomPaint vol_fill = venom_paint_fill(venom_color_rgba(100, 200, 150, 255));
-    venom_canvas_draw_rounded_rect(canvas, (VenomRectF){ 15, vol_y, (width - 30) * 0.5f, 35 }, 10.0f, &vol_fill);
+    VaxpPaint vol_fill = vaxp_paint_fill(vaxp_color_rgba(100, 200, 150, 255));
+    vaxp_canvas_draw_rounded_rect(canvas, (VaxpRectF){ 15, vol_y, (width - 30) * 0.5f, 35 }, 10.0f, &vol_fill);
     
     /* Speaker icon */
-    VenomPaint speaker = venom_paint_fill(venom_color_rgba(255, 255, 255, 255));
-    venom_canvas_draw_circle(canvas, 35, vol_y + 17, 7, &speaker);
+    VaxpPaint speaker = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, 255));
+    vaxp_canvas_draw_circle(canvas, 35, vol_y + 17, 7, &speaker);
     
     /* Music player area */
     float music_y = vol_y + 55;
-    VenomPaint music_bg = venom_paint_fill(venom_color_rgba(50, 50, 60, 255));
-    VenomRectF music_rect = { 15, music_y, width - 30, 90 };
-    venom_canvas_draw_rounded_rect(canvas, music_rect, 12.0f, &music_bg);
+    VaxpPaint music_bg = vaxp_paint_fill(vaxp_color_rgba(50, 50, 60, 255));
+    VaxpRectF music_rect = { 15, music_y, width - 30, 90 };
+    vaxp_canvas_draw_rounded_rect(canvas, music_rect, 12.0f, &music_bg);
     
     /* Album art */
-    VenomPaint album = venom_paint_fill(venom_color_rgba(100, 80, 120, 255));
-    venom_canvas_draw_rounded_rect(canvas, (VenomRectF){ 25, music_y + 10, 70, 70 }, 8.0f, &album);
+    VaxpPaint album = vaxp_paint_fill(vaxp_color_rgba(100, 80, 120, 255));
+    vaxp_canvas_draw_rounded_rect(canvas, (VaxpRectF){ 25, music_y + 10, 70, 70 }, 8.0f, &album);
     
     /* Song title placeholder */
-    VenomPaint song_title = venom_paint_fill(venom_color_rgba(255, 255, 255, 255));
-    venom_canvas_draw_rounded_rect(canvas, (VenomRectF){ 105, music_y + 20, 100, 12 }, 3.0f, &song_title);
+    VaxpPaint song_title = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, 255));
+    vaxp_canvas_draw_rounded_rect(canvas, (VaxpRectF){ 105, music_y + 20, 100, 12 }, 3.0f, &song_title);
     
     /* Artist placeholder */
-    VenomPaint artist = venom_paint_fill(venom_color_rgba(180, 180, 180, 255));
-    venom_canvas_draw_rounded_rect(canvas, (VenomRectF){ 105, music_y + 38, 70, 10 }, 3.0f, &artist);
+    VaxpPaint artist = vaxp_paint_fill(vaxp_color_rgba(180, 180, 180, 255));
+    vaxp_canvas_draw_rounded_rect(canvas, (VaxpRectF){ 105, music_y + 38, 70, 10 }, 3.0f, &artist);
     
     /* Play button */
-    VenomPaint play = venom_paint_fill(venom_color_rgba(255, 255, 255, 255));
-    venom_canvas_draw_circle(canvas, width - 60, music_y + 45, 18, &play);
+    VaxpPaint play = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, 255));
+    vaxp_canvas_draw_circle(canvas, width - 60, music_y + 45, 18, &play);
 }
 
 /* ============================================================================
@@ -276,7 +276,7 @@ int main(int argc, char** argv) {
     (void)argc; (void)argv;
     
     printf("===========================================\n");
-    printf("   VENOMUI Desktop Panel Demo\n");
+    printf("   VAXPUI Desktop Panel Demo\n");
     printf("   OpenGL-powered Desktop Shell\n");
     printf("===========================================\n\n");
     
@@ -335,7 +335,7 @@ int main(int argc, char** argv) {
     long strut_values[12] = {0, 0, panel_height, 0, 0, 0, 0, 0, 0, screen_width - 1, 0, 0};
     XChangeProperty(display, panel_window, strut, XA_CARDINAL, 32, PropModeReplace, (unsigned char*)strut_values, 12);
     
-    XStoreName(display, panel_window, "VENOMUI Panel");
+    XStoreName(display, panel_window, "VAXPUI Panel");
     XMapWindow(display, panel_window);
     
     /* Create control center popup window */
@@ -349,14 +349,14 @@ int main(int argc, char** argv) {
     while (1) { XNextEvent(display, &event); if (event.type == Expose) break; }
     
     /* Create OpenGL canvas for panel */
-    VenomResultPtr canvas_result = venom_canvas_create_opengl(display, panel_window, screen_width, panel_height);
+    VaxpResultPtr canvas_result = vaxp_canvas_create_opengl(display, panel_window, screen_width, panel_height);
     if (!canvas_result.ok) { fprintf(stderr, "Panel canvas failed\n"); return 1; }
-    VenomCanvas* panel_canvas = (VenomCanvas*)canvas_result.value;
+    VaxpCanvas* panel_canvas = (VaxpCanvas*)canvas_result.value;
     
     /* Create OpenGL canvas for control center */
-    canvas_result = venom_canvas_create_opengl(display, g_state.cc_window, cc_width, cc_height);
+    canvas_result = vaxp_canvas_create_opengl(display, g_state.cc_window, cc_width, cc_height);
     if (!canvas_result.ok) { fprintf(stderr, "CC canvas failed\n"); return 1; }
-    g_state.cc_canvas = (VenomCanvas*)canvas_result.value;
+    g_state.cc_canvas = (VaxpCanvas*)canvas_result.value;
     
     printf("Panel created: %dx%d\n", screen_width, panel_height);
     printf("Control Center: %dx%d\n", cc_width, cc_height);
@@ -440,14 +440,14 @@ int main(int argc, char** argv) {
         
         /* ===== Draw Panel ===== */
         
-        VenomColor panel_bg = venom_color_rgba(20, 20, 30, 245);
-        venom_canvas_clear(panel_canvas, panel_bg);
+        VaxpColor panel_bg = vaxp_color_rgba(20, 20, 30, 245);
+        vaxp_canvas_clear(panel_canvas, panel_bg);
         
         /* Clock background */
-        VenomPaint clock_bg = venom_paint_fill(venom_color_rgba(255, 255, 255, 30));
+        VaxpPaint clock_bg = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, 30));
         float clock_x = screen_width / 2.0f - 35;
-        VenomRectF clock_rect = { clock_x, 3, 70, 20 };
-        venom_canvas_draw_rounded_rect(panel_canvas, clock_rect, 10.0f, &clock_bg);
+        VaxpRectF clock_rect = { clock_x, 3, 70, 20 };
+        vaxp_canvas_draw_rounded_rect(panel_canvas, clock_rect, 10.0f, &clock_bg);
         
         /* Clock text - actual time */
         time_t now = time(NULL);
@@ -455,8 +455,8 @@ int main(int argc, char** argv) {
         char time_str[16];
         strftime(time_str, sizeof(time_str), "%H:%M", tm_info);
         
-        VenomPaint text_paint = venom_paint_fill(venom_color_rgba(255, 255, 255, 255));
-        venom_canvas_draw_text(panel_canvas, time_str, clock_x + 15, 18, NULL, &text_paint);
+        VaxpPaint text_paint = vaxp_paint_fill(vaxp_color_rgba(255, 255, 255, 255));
+        vaxp_canvas_draw_text(panel_canvas, time_str, clock_x + 15, 18, NULL, &text_paint);
         
         /* Battery */
         draw_battery_icon(panel_canvas, screen_width - 100, 8, g_state.battery_percent, g_state.battery_charging);
@@ -464,18 +464,18 @@ int main(int argc, char** argv) {
         /* Battery percentage text */
         char batt_str[8];
         snprintf(batt_str, sizeof(batt_str), "%d%%", g_state.battery_percent);
-        venom_canvas_draw_text(panel_canvas, batt_str, screen_width - 70, 18, NULL, &text_paint);
+        vaxp_canvas_draw_text(panel_canvas, batt_str, screen_width - 70, 18, NULL, &text_paint);
         
         /* Control center icon */
         draw_control_center_icon(panel_canvas, screen_width - 30, 7, g_state.icon_hovered);
         
-        venom_canvas_flush(panel_canvas);
+        vaxp_canvas_flush(panel_canvas);
         
         /* ===== Draw Control Center if visible ===== */
         if (g_state.cc_visible) {
-            venom_canvas_clear(g_state.cc_canvas, venom_color_rgba(0, 0, 0, 0));
+            vaxp_canvas_clear(g_state.cc_canvas, vaxp_color_rgba(0, 0, 0, 0));
             draw_control_center_content(g_state.cc_canvas, cc_width, cc_height);
-            venom_canvas_flush(g_state.cc_canvas);
+            vaxp_canvas_flush(g_state.cc_canvas);
         }
         
         /* FPS counter */
@@ -495,8 +495,8 @@ int main(int argc, char** argv) {
     
     printf("\n\nPanel demo finished!\n");
     
-    venom_unref(panel_canvas);
-    venom_unref(g_state.cc_canvas);
+    vaxp_unref(panel_canvas);
+    vaxp_unref(g_state.cc_canvas);
     XDestroyWindow(display, g_state.cc_window);
     XDestroyWindow(display, panel_window);
     XFreeColormap(display, colormap);

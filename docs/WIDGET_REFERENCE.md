@@ -1,6 +1,6 @@
-# VENOMUI Widget Documentation
+# VAXPUI Widget Documentation
 
-Complete API reference and usage guide for all 61 VENOMUI widgets.
+Complete API reference and usage guide for all 61 VAXPUI widgets.
 
 ---
 
@@ -20,54 +20,54 @@ Complete API reference and usage guide for all 61 VENOMUI widgets.
 
 ## Getting Started
 
-### Including VENOMUI
+### Including VAXPUI
 
 ```c
-#include <venomui.h>
+#include <vaxpui.h>
 ```
 
 ### Widget Lifecycle
 
 All widgets follow this lifecycle:
-1. **Create** - Use `venom_*_create()` or macro builder
+1. **Create** - Use `vaxp_*_create()` or macro builder
 2. **Configure** - Set properties
-3. **Add to parent** - `venom_container_add_child()`
+3. **Add to parent** - `vaxp_container_add_child()`
 4. **Use** - Widget handles events automatically
-5. **Destroy** - Automatic via reference counting with `venom_unref()`
+5. **Destroy** - Automatic via reference counting with `vaxp_unref()`
 
 ### Memory Management
 
 ```c
 /* Widgets use reference counting */
-VenomWidget* widget = venom_button_create().value;
-venom_ref(widget);    /* Increment ref count */
-venom_unref(widget);  /* Decrement (frees when 0) */
+VaxpWidget* widget = vaxp_button_create().value;
+vaxp_ref(widget);    /* Increment ref count */
+vaxp_unref(widget);  /* Decrement (frees when 0) */
 ```
 
 ---
 
 ## Layout Widgets
 
-### VenomContainer
+### VaxpContainer
 
 Flexible box layout for arranging children in rows, columns, or grids.
 
 ```c
 /* Create a horizontal row */
-VenomWidget* row = venom_container(
-    .direction = VENOM_DIRECTION_HORIZONTAL,
+VaxpWidget* row = vaxp_container(
+    .direction = VAXP_DIRECTION_HORIZONTAL,
     .spacing = 10.0f,
-    .padding = (VenomInsets){ 16, 16, 16, 16 },
-    .alignment = VENOM_ALIGN_CENTER
+    .padding = (VaxpInsets){ 16, 16, 16, 16 },
+    .alignment = VAXP_ALIGN_CENTER
 );
 
 /* Add children */
-venom_container_add_child((VenomContainer*)row, button1);
-venom_container_add_child((VenomContainer*)row, button2);
+vaxp_container_add_child((VaxpContainer*)row, button1);
+vaxp_container_add_child((VaxpContainer*)row, button2);
 
 /* Create a vertical column */
-VenomWidget* column = venom_container(
-    .direction = VENOM_DIRECTION_VERTICAL,
+VaxpWidget* column = vaxp_container(
+    .direction = VAXP_DIRECTION_VERTICAL,
     .spacing = 8.0f
 );
 ```
@@ -75,60 +75,60 @@ VenomWidget* column = venom_container(
 **Properties:**
 | Property | Type | Description |
 |----------|------|-------------|
-| `direction` | `VenomDirection` | HORIZONTAL, VERTICAL, GRID |
-| `spacing` | `VenomF32` | Space between children |
-| `padding` | `VenomInsets` | Inner padding |
-| `alignment` | `VenomAlignment` | START, CENTER, END |
+| `direction` | `VaxpDirection` | HORIZONTAL, VERTICAL, GRID |
+| `spacing` | `VaxpF32` | Space between children |
+| `padding` | `VaxpInsets` | Inner padding |
+| `alignment` | `VaxpAlignment` | START, CENTER, END |
 
 ---
 
-### VenomStack
+### VaxpStack
 
 Overlays children on top of each other.
 
 ```c
-VenomWidget* stack = venom_stack_create().value;
+VaxpWidget* stack = vaxp_stack_create().value;
 
 /* Children are stacked - last added is on top */
-venom_stack_add_child((VenomStack*)stack, background_image);
-venom_stack_add_child((VenomStack*)stack, overlay_text);
+vaxp_stack_add_child((VaxpStack*)stack, background_image);
+vaxp_stack_add_child((VaxpStack*)stack, overlay_text);
 ```
 
 ---
 
-### VenomSpacer
+### VaxpSpacer
 
 Flexible empty space that expands to fill available area.
 
 ```c
 /* Push button to the right */
-venom_container_add_child(row, label);
-venom_container_add_child(row, VENOM_SPACER(.flex = 1.0f));
-venom_container_add_child(row, button);
+vaxp_container_add_child(row, label);
+vaxp_container_add_child(row, VAXP_SPACER(.flex = 1.0f));
+vaxp_container_add_child(row, button);
 ```
 
 ---
 
-### VenomDivider
+### VaxpDivider
 
 Horizontal or vertical line separator.
 
 ```c
-VenomWidget* divider = venom_divider(
-    .vertical = VENOM_FALSE,  /* Horizontal line */
+VaxpWidget* divider = vaxp_divider(
+    .vertical = VAXP_FALSE,  /* Horizontal line */
     .thickness = 1.0f,
-    .color = (VenomColor){ 200, 200, 200, 255 }
+    .color = (VaxpColor){ 200, 200, 200, 255 }
 );
 ```
 
 ---
 
-### VenomSizedBox
+### VaxpSizedBox
 
 Fixed-size container.
 
 ```c
-VenomWidget* box = VENOM_SIZED_BOX(
+VaxpWidget* box = VAXP_SIZED_BOX(
     .width = 100.0f,
     .height = 50.0f,
     .child = some_widget
@@ -137,66 +137,66 @@ VenomWidget* box = VENOM_SIZED_BOX(
 
 ---
 
-### VenomPadding
+### VaxpPadding
 
 Adds padding around a child widget.
 
 ```c
-VenomWidget* padded = venom_padding(
-    .padding = (VenomInsets){ 20, 20, 20, 20 },
+VaxpWidget* padded = vaxp_padding(
+    .padding = (VaxpInsets){ 20, 20, 20, 20 },
     .child = content_widget
 );
 ```
 
 ---
 
-### VenomSplitPane
+### VaxpSplitPane
 
 Resizable split panels with draggable divider.
 
 ```c
-VenomWidget* split = venom_split_pane(
+VaxpWidget* split = vaxp_split_pane(
     .first = left_panel,
     .second = right_panel,
-    .direction = VENOM_SPLIT_HORIZONTAL,
+    .direction = VAXP_SPLIT_HORIZONTAL,
     .position = 0.3f  /* 30% for first panel */
 );
 
 /* API */
-venom_split_pane_set_position(split, 0.5f);
-venom_split_pane_set_min_sizes(split, 100, 100);
+vaxp_split_pane_set_position(split, 0.5f);
+vaxp_split_pane_set_min_sizes(split, 100, 100);
 ```
 
 ---
 
-### VenomScrollable
+### VaxpScrollable
 
 Scrollable container for content larger than viewport.
 
 ```c
-VenomWidget* scroll = venom_scrollable_create().value;
-venom_scrollable_set_content((VenomScrollable*)scroll, long_content);
-venom_scrollable_set_direction((VenomScrollable*)scroll, VENOM_SCROLL_VERTICAL);
+VaxpWidget* scroll = vaxp_scrollable_create().value;
+vaxp_scrollable_set_content((VaxpScrollable*)scroll, long_content);
+vaxp_scrollable_set_direction((VaxpScrollable*)scroll, VAXP_SCROLL_VERTICAL);
 ```
 
 ---
 
 ## Input Controls
 
-### VenomButton
+### VaxpButton
 
 Clickable button with various styles.
 
 ```c
-void on_click(VenomWidget* btn, void* data) {
+void on_click(VaxpWidget* btn, void* data) {
     printf("Button clicked!\n");
 }
 
-VenomWidget* button = venom_button(
+VaxpWidget* button = vaxp_button(
     .label = "Click Me",
     .on_click = on_click,
     .data = NULL,
-    .style = VENOM_BUTTON_FILLED
+    .style = VAXP_BUTTON_FILLED
 );
 
 /* Styles: FILLED, OUTLINED, TEXT */
@@ -204,62 +204,62 @@ VenomWidget* button = venom_button(
 
 **API:**
 ```c
-venom_button_set_label(btn, "New Label");
-venom_button_set_enabled(btn, VENOM_FALSE);
-venom_button_set_loading(btn, VENOM_TRUE);
+vaxp_button_set_label(btn, "New Label");
+vaxp_button_set_enabled(btn, VAXP_FALSE);
+vaxp_button_set_loading(btn, VAXP_TRUE);
 ```
 
 ---
 
-### VenomCheckbox
+### VaxpCheckbox
 
 Boolean toggle with label.
 
 ```c
-void on_toggle(VenomCheckbox* cb, VenomBool checked, void* data) {
+void on_toggle(VaxpCheckbox* cb, VaxpBool checked, void* data) {
     printf("Checked: %s\n", checked ? "yes" : "no");
 }
 
-VenomWidget* checkbox = venom_checkbox(
+VaxpWidget* checkbox = vaxp_checkbox(
     .label = "Accept Terms",
-    .checked = VENOM_FALSE,
+    .checked = VAXP_FALSE,
     .on_change = on_toggle
 );
 
 /* API */
-VenomBool is_checked = venom_checkbox_get_checked(checkbox);
-venom_checkbox_set_checked(checkbox, VENOM_TRUE);
+VaxpBool is_checked = vaxp_checkbox_get_checked(checkbox);
+vaxp_checkbox_set_checked(checkbox, VAXP_TRUE);
 ```
 
 ---
 
-### VenomSwitch
+### VaxpSwitch
 
 On/off toggle switch.
 
 ```c
-void on_switch(VenomSwitch* sw, VenomBool on, void* data) {
+void on_switch(VaxpSwitch* sw, VaxpBool on, void* data) {
     printf("Switch: %s\n", on ? "ON" : "OFF");
 }
 
-VenomWidget* sw = venom_switch(
-    .on = VENOM_FALSE,
+VaxpWidget* sw = vaxp_switch(
+    .on = VAXP_FALSE,
     .on_change = on_switch
 );
 ```
 
 ---
 
-### VenomSlider
+### VaxpSlider
 
 Value selection slider.
 
 ```c
-void on_slide(VenomSlider* slider, VenomF32 value, void* data) {
+void on_slide(VaxpSlider* slider, VaxpF32 value, void* data) {
     printf("Value: %.2f\n", value);
 }
 
-VenomWidget* slider = venom_slider(
+VaxpWidget* slider = vaxp_slider(
     .value = 50.0f,
     .min = 0.0f,
     .max = 100.0f,
@@ -268,133 +268,133 @@ VenomWidget* slider = venom_slider(
 );
 
 /* API */
-VenomF32 val = venom_slider_get_value(slider);
-venom_slider_set_value(slider, 75.0f);
+VaxpF32 val = vaxp_slider_get_value(slider);
+vaxp_slider_set_value(slider, 75.0f);
 ```
 
 ---
 
-### VenomRadioButton & VenomRadioGroup
+### VaxpRadioButton & VaxpRadioGroup
 
 Mutually exclusive selection.
 
 ```c
-void on_select(VenomRadioGroup* group, VenomU32 index, void* data) {
+void on_select(VaxpRadioGroup* group, VaxpU32 index, void* data) {
     printf("Selected option: %u\n", index);
 }
 
 /* Create group */
-VenomRadioGroup* group = (VenomRadioGroup*)venom_radio_group_create().value;
-venom_radio_group_set_on_change(group, on_select, NULL);
+VaxpRadioGroup* group = (VaxpRadioGroup*)vaxp_radio_group_create().value;
+vaxp_radio_group_set_on_change(group, on_select, NULL);
 
 /* Add options */
-venom_radio_group_add_option(group, "Option A");
-venom_radio_group_add_option(group, "Option B");
-venom_radio_group_add_option(group, "Option C");
+vaxp_radio_group_add_option(group, "Option A");
+vaxp_radio_group_add_option(group, "Option B");
+vaxp_radio_group_add_option(group, "Option C");
 
 /* Set selected */
-venom_radio_group_set_selected(group, 0);
+vaxp_radio_group_set_selected(group, 0);
 ```
 
 ---
 
-### VenomTextInput
+### VaxpTextInput
 
 Single-line text input field.
 
 ```c
-void on_text_change(VenomTextInput* input, const char* text, void* data) {
+void on_text_change(VaxpTextInput* input, const char* text, void* data) {
     printf("Text: %s\n", text);
 }
 
-VenomWidget* input = venom_text_input(
+VaxpWidget* input = vaxp_text_input(
     .placeholder = "Enter name...",
     .on_change = on_text_change
 );
 
 /* API */
-const char* text = venom_text_input_get_text(input);
-venom_text_input_set_text(input, "Hello");
-venom_text_input_clear(input);
+const char* text = vaxp_text_input_get_text(input);
+vaxp_text_input_set_text(input, "Hello");
+vaxp_text_input_clear(input);
 ```
 
 ---
 
-### VenomTextArea
+### VaxpTextArea
 
 Multi-line text input.
 
 ```c
-VenomWidget* textarea = venom_text_area(
+VaxpWidget* textarea = vaxp_text_area(
     .placeholder = "Enter description...",
     .max_length = 1000,
     .on_change = on_change_callback
 );
 
 /* API */
-venom_text_area_set_text(textarea, "Multi\nline\ntext");
-const char* content = venom_text_area_get_text(textarea);
+vaxp_text_area_set_text(textarea, "Multi\nline\ntext");
+const char* content = vaxp_text_area_get_text(textarea);
 ```
 
 ---
 
-### VenomDropdown
+### VaxpDropdown
 
 Selection dropdown list.
 
 ```c
-void on_select(VenomDropdown* dd, VenomU32 index, const char* value, void* data) {
+void on_select(VaxpDropdown* dd, VaxpU32 index, const char* value, void* data) {
     printf("Selected: %s (index %u)\n", value, index);
 }
 
-VenomWidget* dropdown = venom_dropdown(
+VaxpWidget* dropdown = vaxp_dropdown(
     .placeholder = "Select country...",
     .on_select = on_select
 );
 
 /* Add items */
-venom_dropdown_add_item(dropdown, "USA");
-venom_dropdown_add_item(dropdown, "UK");
-venom_dropdown_add_item(dropdown, "Germany");
+vaxp_dropdown_add_item(dropdown, "USA");
+vaxp_dropdown_add_item(dropdown, "UK");
+vaxp_dropdown_add_item(dropdown, "Germany");
 
 /* API */
-venom_dropdown_set_selected(dropdown, 0);
-VenomU32 idx = venom_dropdown_get_selected(dropdown);
+vaxp_dropdown_set_selected(dropdown, 0);
+VaxpU32 idx = vaxp_dropdown_get_selected(dropdown);
 ```
 
 ---
 
-### VenomSearchBar
+### VaxpSearchBar
 
 Search input with icon and clear button.
 
 ```c
-void on_search(VenomSearchBar* bar, const char* query, void* data) {
+void on_search(VaxpSearchBar* bar, const char* query, void* data) {
     printf("Searching for: %s\n", query);
 }
 
-VenomWidget* search = venom_search_bar(
+VaxpWidget* search = vaxp_search_bar(
     .placeholder = "Search...",
     .on_search = on_search
 );
 
 /* API */
-venom_search_bar_clear(search);
-const char* query = venom_search_bar_get_text(search);
+vaxp_search_bar_clear(search);
+const char* query = vaxp_search_bar_get_text(search);
 ```
 
 ---
 
-### VenomNumberInput
+### VaxpNumberInput
 
 Numeric input with +/- buttons.
 
 ```c
-void on_number(VenomNumberInput* input, VenomF32 value, void* data) {
+void on_number(VaxpNumberInput* input, VaxpF32 value, void* data) {
     printf("Value: %.0f\n", value);
 }
 
-VenomWidget* num = venom_number_input(
+VaxpWidget* num = vaxp_number_input(
     .value = 5,
     .min = 0,
     .max = 100,
@@ -403,200 +403,200 @@ VenomWidget* num = venom_number_input(
 );
 
 /* API */
-venom_number_input_set_value(num, 10);
-VenomF32 val = venom_number_input_get_value(num);
+vaxp_number_input_set_value(num, 10);
+VaxpF32 val = vaxp_number_input_get_value(num);
 ```
 
 ---
 
-### VenomToggleButton
+### VaxpToggleButton
 
 Button that maintains on/off state.
 
 ```c
-void on_toggle(VenomToggleButton* btn, VenomBool toggled, void* data) {
+void on_toggle(VaxpToggleButton* btn, VaxpBool toggled, void* data) {
     printf("Toggled: %s\n", toggled ? "ON" : "OFF");
 }
 
-VenomWidget* toggle = venom_toggle_button(
+VaxpWidget* toggle = vaxp_toggle_button(
     .label = "Bold",
-    .toggled = VENOM_FALSE,
+    .toggled = VAXP_FALSE,
     .on_toggle = on_toggle
 );
 ```
 
 ---
 
-### VenomRating
+### VaxpRating
 
 Star rating widget.
 
 ```c
-void on_rate(VenomRating* rating, VenomF32 value, void* data) {
+void on_rate(VaxpRating* rating, VaxpF32 value, void* data) {
     printf("Rating: %.1f stars\n", value);
 }
 
-VenomWidget* rating = venom_rating(
+VaxpWidget* rating = vaxp_rating(
     .value = 3.5f,
     .max = 5,
-    .read_only = VENOM_FALSE,
+    .read_only = VAXP_FALSE,
     .on_change = on_rate
 );
 
 /* API */
-venom_rating_set_value(rating, 4.0f);
-VenomF32 stars = venom_rating_get_value(rating);
+vaxp_rating_set_value(rating, 4.0f);
+VaxpF32 stars = vaxp_rating_get_value(rating);
 ```
 
 ---
 
 ## Display Widgets
 
-### VenomLabel
+### VaxpLabel
 
 Text display widget.
 
 ```c
-VenomWidget* label = venom_label(
+VaxpWidget* label = vaxp_label(
     .text = "Hello, World!",
     .font_size = 16.0f,
-    .color = (VenomColor){ 0, 0, 0, 255 }
+    .color = (VaxpColor){ 0, 0, 0, 255 }
 );
 
 /* API */
-venom_label_set_text(label, "New text");
+vaxp_label_set_text(label, "New text");
 ```
 
 ---
 
-### VenomImage
+### VaxpImage
 
 Image display widget.
 
 ```c
-VenomWidget* image = venom_image_create().value;
-venom_image_load((VenomImage*)image, "/path/to/image.png");
-venom_image_set_fit((VenomImage*)image, VENOM_IMAGE_FIT_CONTAIN);
+VaxpWidget* image = vaxp_image_create().value;
+vaxp_image_load((VaxpImage*)image, "/path/to/image.png");
+vaxp_image_set_fit((VaxpImage*)image, VAXP_IMAGE_FIT_CONTAIN);
 ```
 
 ---
 
-### VenomIcon
+### VaxpIcon
 
 Emoji or icon font display.
 
 ```c
-VenomWidget* icon = venom_icon(
+VaxpWidget* icon = vaxp_icon(
     .icon = "⚙️",  /* or "settings" for icon fonts */
     .size = 24.0f,
-    .color = (VenomColor){ 97, 97, 97, 255 }
+    .color = (VaxpColor){ 97, 97, 97, 255 }
 );
 ```
 
 ---
 
-### VenomAvatar
+### VaxpAvatar
 
 Circular profile display with initials or image.
 
 ```c
-VenomWidget* avatar = venom_avatar(
+VaxpWidget* avatar = vaxp_avatar(
     .initials = "JD",  /* Shows "JD" if no image */
     .image = "/path/to/photo.jpg",
     .size = 40.0f,
-    .color = (VenomColor){ 63, 81, 181, 255 }
+    .color = (VaxpColor){ 63, 81, 181, 255 }
 );
 
 /* Show online indicator */
-venom_avatar_set_indicator(avatar, VENOM_TRUE, 
-    (VenomColor){ 76, 175, 80, 255 });
+vaxp_avatar_set_indicator(avatar, VAXP_TRUE, 
+    (VaxpColor){ 76, 175, 80, 255 });
 ```
 
 ---
 
-### VenomBadge
+### VaxpBadge
 
 Notification count indicator.
 
 ```c
-VenomWidget* badge = venom_badge(
+VaxpWidget* badge = vaxp_badge(
     .count = 5,
     .child = icon_widget,
     .max_count = 99,  /* Shows "99+" if exceeded */
-    .dot = VENOM_FALSE  /* Just dot, no number */
+    .dot = VAXP_FALSE  /* Just dot, no number */
 );
 
 /* API */
-venom_badge_set_count(badge, 10);
+vaxp_badge_set_count(badge, 10);
 ```
 
 ---
 
-### VenomChip
+### VaxpChip
 
 Tag or filter element.
 
 ```c
-void on_chip_click(VenomChip* chip, void* data) {
+void on_chip_click(VaxpChip* chip, void* data) {
     printf("Chip clicked\n");
 }
 
-VenomWidget* chip = venom_chip(
+VaxpWidget* chip = vaxp_chip(
     .label = "Technology",
-    .type = VENOM_CHIP_FILTER,  /* FILTER, CHOICE, INPUT, ACTION */
-    .selected = VENOM_FALSE,
+    .type = VAXP_CHIP_FILTER,  /* FILTER, CHOICE, INPUT, ACTION */
+    .selected = VAXP_FALSE,
     .on_click = on_chip_click
 );
 ```
 
 ---
 
-### VenomCard
+### VaxpCard
 
 Elevated container with shadow.
 
 ```c
-VenomWidget* card = venom_card(
+VaxpWidget* card = vaxp_card(
     .child = content_widget,
     .elevation = 4.0f,
     .corner_radius = 12.0f,
     .padding = 16.0f,
-    .outlined = VENOM_FALSE
+    .outlined = VAXP_FALSE
 );
 ```
 
 ---
 
-### VenomColorSwatch
+### VaxpColorSwatch
 
 Color display/picker swatch.
 
 ```c
-void on_color_click(VenomColorSwatch* swatch, VenomColor color, void* data) {
+void on_color_click(VaxpColorSwatch* swatch, VaxpColor color, void* data) {
     printf("Color clicked: #%02X%02X%02X\n", color.r, color.g, color.b);
 }
 
-VenomWidget* swatch = venom_color_swatch(
-    .color = (VenomColor){ 255, 0, 0, 255 },
+VaxpWidget* swatch = vaxp_color_swatch(
+    .color = (VaxpColor){ 255, 0, 0, 255 },
     .size = 32.0f,
-    .selectable = VENOM_TRUE,
+    .selectable = VAXP_TRUE,
     .on_click = on_color_click
 );
 ```
 
 ---
 
-### VenomLink
+### VaxpLink
 
 Clickable hyperlink.
 
 ```c
-void on_link_click(VenomLink* link, const char* url, void* data) {
+void on_link_click(VaxpLink* link, const char* url, void* data) {
     printf("Opening: %s\n", url);
     /* Open URL in browser */
 }
 
-VenomWidget* link = venom_link(
+VaxpWidget* link = vaxp_link(
     .text = "Visit Website",
     .url = "https://VAXP.ORG",
     .on_click = on_link_click
@@ -605,767 +605,767 @@ VenomWidget* link = venom_link(
 
 ---
 
-### VenomSkeleton
+### VaxpSkeleton
 
 Loading placeholder with shimmer animation.
 
 ```c
-VenomWidget* skeleton = venom_skeleton(
-    .variant = VENOM_SKELETON_RECTANGULAR,  /* TEXT, CIRCULAR */
+VaxpWidget* skeleton = vaxp_skeleton(
+    .variant = VAXP_SKELETON_RECTANGULAR,  /* TEXT, CIRCULAR */
     .width = 200.0f,
     .height = 20.0f
 );
 
 /* Call periodically for animation */
-venom_skeleton_animate(skeleton, delta_time);
+vaxp_skeleton_animate(skeleton, delta_time);
 ```
 
 ---
 
-### VenomCarousel
+### VaxpCarousel
 
 Image and widget carousel with auto-play and indicators.
 
 ```c
-VenomWidget* carousel = venom_carousel_create().value;
+VaxpWidget* carousel = vaxp_carousel_create().value;
 
 /* Add slides */
-venom_carousel_add_item((VenomCarousel*)carousel, image1);
-venom_carousel_add_item((VenomCarousel*)carousel, image2);
+vaxp_carousel_add_item((VaxpCarousel*)carousel, image1);
+vaxp_carousel_add_item((VaxpCarousel*)carousel, image2);
 
 /* Configure */
-venom_carousel_set_auto_play((VenomCarousel*)carousel, VENOM_TRUE, 3000);
-venom_carousel_set_show_arrows((VenomCarousel*)carousel, VENOM_TRUE);
-venom_carousel_set_indicator((VenomCarousel*)carousel, VENOM_CAROUSEL_DOTS);
+vaxp_carousel_set_auto_play((VaxpCarousel*)carousel, VAXP_TRUE, 3000);
+vaxp_carousel_set_show_arrows((VaxpCarousel*)carousel, VAXP_TRUE);
+vaxp_carousel_set_indicator((VaxpCarousel*)carousel, VAXP_CAROUSEL_DOTS);
 ```
 
 ---
 
-### VenomTable
+### VaxpTable
 
 Data grid with sortable columns and row selection.
 
 ```c
 /* Define columns */
-VenomTableColumn cols[] = {
-    { .key = "id", .title = "ID", .width = 50, .sortable = VENOM_TRUE },
-    { .key = "name", .title = "Name", .flex = 1, .sortable = VENOM_TRUE },
+VaxpTableColumn cols[] = {
+    { .key = "id", .title = "ID", .width = 50, .sortable = VAXP_TRUE },
+    { .key = "name", .title = "Name", .flex = 1, .sortable = VAXP_TRUE },
     { .key = "dpt", .title = "Department", .width = 150 }
 };
 
-VenomWidget* table = venom_table_create(cols, 3).value;
+VaxpWidget* table = vaxp_table_create(cols, 3).value;
 
 /* Add rows */
 const char* row1[] = { "1", "John Doe", "Engineering" };
-venom_table_add_row((VenomTable*)table, row1, 3);
+vaxp_table_add_row((VaxpTable*)table, row1, 3);
 
 /* API */
-venom_table_set_striped((VenomTable*)table, VENOM_TRUE);
-venom_table_set_row_height((VenomTable*)table, 40.0f);
+vaxp_table_set_striped((VaxpTable*)table, VAXP_TRUE);
+vaxp_table_set_row_height((VaxpTable*)table, 40.0f);
 ```
 
 ---
 
-### VenomChart
+### VaxpChart
 
 Statistical charts (Line, Bar, Pie, Donut).
 
 ```c
-VenomWidget* chart = venom_chart_create(VENOM_CHART_BAR).value;
+VaxpWidget* chart = vaxp_chart_create(VAXP_CHART_BAR).value;
 
 /* Set labels */
 const char* labels[] = { "Jan", "Feb", "Mar", "Apr" };
-venom_chart_set_labels((VenomChart*)chart, labels, 4);
+vaxp_chart_set_labels((VaxpChart*)chart, labels, 4);
 
 /* Add dataset */
-VenomF32 values[] = { 10, 25, 15, 30 };
-VenomDataset ds = {
+VaxpF32 values[] = { 10, 25, 15, 30 };
+VaxpDataset ds = {
     .label = "Sales",
     .values = values,
     .value_count = 4,
-    .color = VENOM_COLOR_BLUE
+    .color = VAXP_COLOR_BLUE
 };
-venom_chart_add_dataset((VenomChart*)chart, &ds);
+vaxp_chart_add_dataset((VaxpChart*)chart, &ds);
 
 /* Configure */
-venom_chart_set_title((VenomChart*)chart, "Quarterly Sales");
-venom_chart_set_legend_visible((VenomChart*)chart, VENOM_TRUE);
+vaxp_chart_set_title((VaxpChart*)chart, "Quarterly Sales");
+vaxp_chart_set_legend_visible((VaxpChart*)chart, VAXP_TRUE);
 ```
 
 ---
 
 ## Navigation Widgets
 
-### VenomTabBar & VenomTabView
+### VaxpTabBar & VaxpTabView
 
 Tab-based navigation.
 
 ```c
-void on_tab_change(VenomTabBar* bar, VenomU32 index, void* data) {
+void on_tab_change(VaxpTabBar* bar, VaxpU32 index, void* data) {
     printf("Tab changed to: %u\n", index);
 }
 
 /* Create tab bar */
-VenomTabBar* tabs = (VenomTabBar*)venom_tab_bar_create().value;
-venom_tab_bar_set_style(tabs, VENOM_TAB_STYLE_UNDERLINE);
-venom_tab_bar_set_on_change(tabs, on_tab_change, NULL);
+VaxpTabBar* tabs = (VaxpTabBar*)vaxp_tab_bar_create().value;
+vaxp_tab_bar_set_style(tabs, VAXP_TAB_STYLE_UNDERLINE);
+vaxp_tab_bar_set_on_change(tabs, on_tab_change, NULL);
 
 /* Create tab view */
-VenomTabView* view = (VenomTabView*)venom_tab_view_create().value;
+VaxpTabView* view = (VaxpTabView*)vaxp_tab_view_create().value;
 
 /* Link them */
-venom_tab_bar_link_view(tabs, view);
+vaxp_tab_bar_link_view(tabs, view);
 
 /* Add tabs */
-venom_tab_bar_add_tab(tabs, "Home", home_content);
-venom_tab_bar_add_tab(tabs, "Settings", settings_content);
-venom_tab_bar_add_tab(tabs, "About", about_content);
+vaxp_tab_bar_add_tab(tabs, "Home", home_content);
+vaxp_tab_bar_add_tab(tabs, "Settings", settings_content);
+vaxp_tab_bar_add_tab(tabs, "About", about_content);
 
 /* Styles: UNDERLINE, PILL, BOXED */
 ```
 
 ---
 
-### VenomBreadcrumb
+### VaxpBreadcrumb
 
 Path navigation.
 
 ```c
-void on_navigate(VenomBreadcrumb* bc, VenomU32 index, const char* path, void* data) {
+void on_navigate(VaxpBreadcrumb* bc, VaxpU32 index, const char* path, void* data) {
     printf("Navigate to: %s\n", path);
 }
 
-VenomBreadcrumb* bc = (VenomBreadcrumb*)venom_breadcrumb_create().value;
-venom_breadcrumb_set_on_navigate(bc, on_navigate, NULL);
+VaxpBreadcrumb* bc = (VaxpBreadcrumb*)vaxp_breadcrumb_create().value;
+vaxp_breadcrumb_set_on_navigate(bc, on_navigate, NULL);
 
 /* Add items manually */
-venom_breadcrumb_add_item(bc, "Home", "/");
-venom_breadcrumb_add_item(bc, "Documents", "/documents");
-venom_breadcrumb_add_item(bc, "Report.pdf", "/documents/report.pdf");
+vaxp_breadcrumb_add_item(bc, "Home", "/");
+vaxp_breadcrumb_add_item(bc, "Documents", "/documents");
+vaxp_breadcrumb_add_item(bc, "Report.pdf", "/documents/report.pdf");
 
 /* Or parse from path */
-venom_breadcrumb_set_path(bc, "/home/user/documents", '/');
+vaxp_breadcrumb_set_path(bc, "/home/user/documents", '/');
 ```
 
 ---
 
-### VenomTreeView
+### VaxpTreeView
 
 Hierarchical tree display.
 
 ```c
-void on_tree_select(VenomTreeView* tree, VenomTreeNode* node, void* data) {
+void on_tree_select(VaxpTreeView* tree, VaxpTreeNode* node, void* data) {
     printf("Selected: %s\n", node->label);
 }
 
 /* Create tree */
-VenomTreeView* tree = (VenomTreeView*)venom_tree_view_create().value;
-venom_tree_view_set_on_select(tree, on_tree_select, NULL);
+VaxpTreeView* tree = (VaxpTreeView*)vaxp_tree_view_create().value;
+vaxp_tree_view_set_on_select(tree, on_tree_select, NULL);
 
 /* Create nodes */
-VenomTreeNode* root = venom_tree_node_create("Root", NULL);
-VenomTreeNode* child1 = venom_tree_node_create("Child 1", NULL);
-VenomTreeNode* child2 = venom_tree_node_create("Child 2", NULL);
-VenomTreeNode* grandchild = venom_tree_node_create("Grandchild", NULL);
+VaxpTreeNode* root = vaxp_tree_node_create("Root", NULL);
+VaxpTreeNode* child1 = vaxp_tree_node_create("Child 1", NULL);
+VaxpTreeNode* child2 = vaxp_tree_node_create("Child 2", NULL);
+VaxpTreeNode* grandchild = vaxp_tree_node_create("Grandchild", NULL);
 
 /* Build hierarchy */
-venom_tree_node_add_child(root, child1);
-venom_tree_node_add_child(root, child2);
-venom_tree_node_add_child(child1, grandchild);
+vaxp_tree_node_add_child(root, child1);
+vaxp_tree_node_add_child(root, child2);
+vaxp_tree_node_add_child(child1, grandchild);
 
 /* Set root */
-venom_tree_view_add_root(tree, root);
+vaxp_tree_view_add_root(tree, root);
 
 /* API */
-venom_tree_view_expand_all(tree);
-venom_tree_view_collapse_all(tree);
+vaxp_tree_view_expand_all(tree);
+vaxp_tree_view_collapse_all(tree);
 ```
 
 ---
 
-### VenomListView
+### VaxpListView
 
 Scrollable list with virtualization.
 
 ```c
-VenomWidget* build_item(VenomU32 index, void* data, void* user_data) {
+VaxpWidget* build_item(VaxpU32 index, void* data, void* user_data) {
     const char* text = (const char*)data;
-    return venom_label(.text = text);
+    return vaxp_label(.text = text);
 }
 
-VenomListView* list = (VenomListView*)venom_list_view_create().value;
-venom_list_view_set_builder(list, build_item, NULL);
+VaxpListView* list = (VaxpListView*)vaxp_list_view_create().value;
+vaxp_list_view_set_builder(list, build_item, NULL);
 
 /* Add items */
-venom_list_view_add_item(list, "Item 1");
-venom_list_view_add_item(list, "Item 2");
-venom_list_view_add_item(list, "Item 3");
+vaxp_list_view_add_item(list, "Item 1");
+vaxp_list_view_add_item(list, "Item 2");
+vaxp_list_view_add_item(list, "Item 3");
 
 /* API */
-venom_list_view_set_selected(list, 0);
-VenomI32 selected = venom_list_view_get_selected(list);
+vaxp_list_view_set_selected(list, 0);
+VaxpI32 selected = vaxp_list_view_get_selected(list);
 ```
 
 ---
 
-### VenomGridView
+### VaxpGridView
 
 Grid layout list.
 
 ```c
-VenomWidget* build_grid_item(VenomU32 index, void* data, void* user_data) {
-    return venom_card(.child = venom_label(.text = data));
+VaxpWidget* build_grid_item(VaxpU32 index, void* data, void* user_data) {
+    return vaxp_card(.child = vaxp_label(.text = data));
 }
 
-VenomGridView* grid = (VenomGridView*)venom_grid_view_create().value;
-venom_grid_view_set_columns(grid, 3);
-venom_grid_view_set_spacing(grid, 16.0f, 16.0f);
-venom_grid_view_set_builder(grid, build_grid_item, NULL);
-venom_grid_view_set_item_size(grid, 0, 150.0f);  /* 0 = auto width */
+VaxpGridView* grid = (VaxpGridView*)vaxp_grid_view_create().value;
+vaxp_grid_view_set_columns(grid, 3);
+vaxp_grid_view_set_spacing(grid, 16.0f, 16.0f);
+vaxp_grid_view_set_builder(grid, build_grid_item, NULL);
+vaxp_grid_view_set_item_size(grid, 0, 150.0f);  /* 0 = auto width */
 
 /* Add items */
 for (int i = 0; i < 20; i++) {
-    venom_grid_view_add_item(grid, "Item");
+    vaxp_grid_view_add_item(grid, "Item");
 }
 ```
 
 ---
 
-### VenomAppBar
+### VaxpAppBar
 
 Material Design app bar with title, actions, and navigation control.
 
 ```c
-VenomWidget* appbar = venom_appbar_create("My App").value;
+VaxpWidget* appbar = vaxp_appbar_create("My App").value;
 
 /* Configure */
-venom_appbar_set_subtitle((VenomAppBar*)appbar, "Dashboard");
-venom_appbar_set_elevation((VenomAppBar*)appbar, 4.0f);
-venom_appbar_set_center_title((VenomAppBar*)appbar, VENOM_FALSE);
+vaxp_appbar_set_subtitle((VaxpAppBar*)appbar, "Dashboard");
+vaxp_appbar_set_elevation((VaxpAppBar*)appbar, 4.0f);
+vaxp_appbar_set_center_title((VaxpAppBar*)appbar, VAXP_FALSE);
 
 /* Add entry point (leading) */
-venom_appbar_set_leading((VenomAppBar*)appbar, menu_icon);
+vaxp_appbar_set_leading((VaxpAppBar*)appbar, menu_icon);
 
 /* Add actions */
-venom_appbar_add_action((VenomAppBar*)appbar, search_btn);
-venom_appbar_add_action((VenomAppBar*)appbar, settings_btn);
+vaxp_appbar_add_action((VaxpAppBar*)appbar, search_btn);
+vaxp_appbar_add_action((VaxpAppBar*)appbar, settings_btn);
 ```
 
 ---
 
-### VenomBottomNav
+### VaxpBottomNav
 
 Bottom navigation bar for top-level views.
 
 ```c
 /* Define items */
-VenomNavItem items[] = {
+VaxpNavItem items[] = {
     { .icon = "Home", .label = "Home" },
     { .icon = "Search", .label = "Explore" },
     { .icon = "Person", .label = "Profile" }
 };
 
-VenomWidget* nav = venom_bottom_nav_create(items, 3).value;
+VaxpWidget* nav = vaxp_bottom_nav_create(items, 3).value;
 
 /* Handle selection */
-void on_nav(VenomI32 index, void* data) {
+void on_nav(VaxpI32 index, void* data) {
     printf("Selected tab: %d\n", index);
 }
-venom_bottom_nav_set_on_change((VenomBottomNav*)nav, on_nav, NULL);
+vaxp_bottom_nav_set_on_change((VaxpBottomNav*)nav, on_nav, NULL);
 
 /* API */
-venom_bottom_nav_set_selected((VenomBottomNav*)nav, 0);
-venom_bottom_nav_set_color((VenomBottomNav*)nav, VENOM_COLOR_BLUE);
+vaxp_bottom_nav_set_selected((VaxpBottomNav*)nav, 0);
+vaxp_bottom_nav_set_color((VaxpBottomNav*)nav, VAXP_COLOR_BLUE);
 ```
 
 ---
 
-### VenomDrawer
+### VaxpDrawer
 
 Navigation drawer (sidebar) with header and items.
 
 ```c
-VenomWidget* drawer = venom_drawer_create().value;
+VaxpWidget* drawer = vaxp_drawer_create().value;
 
 /* Set header */
-VenomWidget* header = create_user_header();
-venom_drawer_set_header((VenomDrawer*)drawer, header);
+VaxpWidget* header = create_user_header();
+vaxp_drawer_set_header((VaxpDrawer*)drawer, header);
 
 /* Add items */
-venom_drawer_add_item((VenomDrawer*)drawer, "inbox", "Inbox", "12");
-venom_drawer_add_item((VenomDrawer*)drawer, "star", "Starred", NULL);
-venom_drawer_add_separator((VenomDrawer*)drawer);
-venom_drawer_add_item((VenomDrawer*)drawer, "settings", "Settings", NULL);
+vaxp_drawer_add_item((VaxpDrawer*)drawer, "inbox", "Inbox", "12");
+vaxp_drawer_add_item((VaxpDrawer*)drawer, "star", "Starred", NULL);
+vaxp_drawer_add_separator((VaxpDrawer*)drawer);
+vaxp_drawer_add_item((VaxpDrawer*)drawer, "settings", "Settings", NULL);
 
 /* Usage */
-venom_drawer_open((VenomDrawer*)drawer);
-venom_drawer_close((VenomDrawer*)drawer);
+vaxp_drawer_open((VaxpDrawer*)drawer);
+vaxp_drawer_close((VaxpDrawer*)drawer);
 ```
 
 ---
 
 ## Feedback & Overlays
 
-### VenomTooltip
+### VaxpTooltip
 
 Hover information popup.
 
 ```c
-VenomWidget* tooltip = venom_tooltip(
+VaxpWidget* tooltip = vaxp_tooltip(
     .text = "This is helpful information",
     .child = button_widget,
     .delay_ms = 500,
-    .position = VENOM_TOOLTIP_TOP
+    .position = VAXP_TOOLTIP_TOP
 );
 ```
 
 ---
 
-### VenomDialog
+### VaxpDialog
 
 Modal dialog.
 
 ```c
-void on_ok(VenomDialog* dialog, void* data) {
+void on_ok(VaxpDialog* dialog, void* data) {
     printf("OK clicked\n");
-    venom_dialog_close(dialog);
+    vaxp_dialog_close(dialog);
 }
 
-void on_cancel(VenomDialog* dialog, void* data) {
-    venom_dialog_close(dialog);
+void on_cancel(VaxpDialog* dialog, void* data) {
+    vaxp_dialog_close(dialog);
 }
 
-VenomDialog* dialog = (VenomDialog*)venom_dialog_create().value;
-venom_dialog_set_title(dialog, "Confirm Action");
-venom_dialog_set_content(dialog, content_widget);
-venom_dialog_add_action(dialog, "Cancel", on_cancel, NULL);
-venom_dialog_add_action(dialog, "OK", on_ok, NULL);
+VaxpDialog* dialog = (VaxpDialog*)vaxp_dialog_create().value;
+vaxp_dialog_set_title(dialog, "Confirm Action");
+vaxp_dialog_set_content(dialog, content_widget);
+vaxp_dialog_add_action(dialog, "Cancel", on_cancel, NULL);
+vaxp_dialog_add_action(dialog, "OK", on_ok, NULL);
 
 /* Show dialog */
-venom_dialog_show(dialog);
+vaxp_dialog_show(dialog);
 ```
 
 ---
 
-### VenomContextMenu
+### VaxpContextMenu
 
 Right-click context menu.
 
 ```c
-void on_menu_item(VenomContextMenu* menu, VenomU32 index, void* data) {
+void on_menu_item(VaxpContextMenu* menu, VaxpU32 index, void* data) {
     printf("Menu item %u clicked\n", index);
 }
 
-VenomContextMenu* menu = (VenomContextMenu*)venom_context_menu_create().value;
-venom_context_menu_add_item(menu, "Cut", on_menu_item, NULL);
-venom_context_menu_add_item(menu, "Copy", on_menu_item, NULL);
-venom_context_menu_add_item(menu, "Paste", on_menu_item, NULL);
-venom_context_menu_add_separator(menu);
-venom_context_menu_add_item(menu, "Delete", on_menu_item, NULL);
+VaxpContextMenu* menu = (VaxpContextMenu*)vaxp_context_menu_create().value;
+vaxp_context_menu_add_item(menu, "Cut", on_menu_item, NULL);
+vaxp_context_menu_add_item(menu, "Copy", on_menu_item, NULL);
+vaxp_context_menu_add_item(menu, "Paste", on_menu_item, NULL);
+vaxp_context_menu_add_separator(menu);
+vaxp_context_menu_add_item(menu, "Delete", on_menu_item, NULL);
 
 /* Show at position */
-venom_context_menu_show(menu, x, y);
+vaxp_context_menu_show(menu, x, y);
 ```
 
 ---
 
-### VenomNotification
+### VaxpNotification
 
 Toast notification.
 
 ```c
-void on_dismiss(VenomNotification* notif, void* data) {
+void on_dismiss(VaxpNotification* notif, void* data) {
     printf("Notification dismissed\n");
 }
 
-VenomWidget* notif = venom_notification(
+VaxpWidget* notif = vaxp_notification(
     .title = "Success",
     .message = "File saved successfully",
-    .type = VENOM_NOTIFY_SUCCESS,  /* INFO, SUCCESS, WARNING, ERROR */
+    .type = VAXP_NOTIFY_SUCCESS,  /* INFO, SUCCESS, WARNING, ERROR */
     .duration_ms = 4000,
-    .dismissible = VENOM_TRUE,
-    .position = VENOM_NOTIFY_TOP_RIGHT
+    .dismissible = VAXP_TRUE,
+    .position = VAXP_NOTIFY_TOP_RIGHT
 );
 
-venom_notification_set_on_dismiss(notif, on_dismiss, NULL);
-venom_notification_show(notif);
+vaxp_notification_set_on_dismiss(notif, on_dismiss, NULL);
+vaxp_notification_show(notif);
 ```
 
 ---
 
-### VenomSnackbar
+### VaxpSnackbar
 
 Bottom message bar with action.
 
 ```c
-void on_undo(VenomSnackbar* bar, void* data) {
+void on_undo(VaxpSnackbar* bar, void* data) {
     printf("Undo clicked\n");
 }
 
-VenomWidget* snackbar = venom_snackbar(
+VaxpWidget* snackbar = vaxp_snackbar(
     .message = "Item deleted",
     .action = "UNDO",
     .on_action = on_undo,
     .duration = 5000
 );
 
-venom_snackbar_show(snackbar);
+vaxp_snackbar_show(snackbar);
 ```
 
 ---
 
-### VenomSpinner
+### VaxpSpinner
 
 Loading indicator.
 
 ```c
-VenomWidget* spinner = venom_spinner(
+VaxpWidget* spinner = vaxp_spinner(
     .size = 40.0f,
-    .color = (VenomColor){ 63, 81, 181, 255 }
+    .color = (VaxpColor){ 63, 81, 181, 255 }
 );
 
 /* Call in animation loop */
-venom_spinner_animate(spinner, delta_time);
+vaxp_spinner_animate(spinner, delta_time);
 ```
 
 ---
 
 ## Multi-Step Widgets
 
-### VenomProgressBar
+### VaxpProgressBar
 
 Linear progress indicator.
 
 ```c
-VenomWidget* progress = venom_progress_bar(
+VaxpWidget* progress = vaxp_progress_bar(
     .value = 0.75f,  /* 0.0 - 1.0 */
-    .indeterminate = VENOM_FALSE,
-    .show_label = VENOM_TRUE
+    .indeterminate = VAXP_FALSE,
+    .show_label = VAXP_TRUE
 );
 
 /* API */
-venom_progress_bar_set_value(progress, 0.5f);
+vaxp_progress_bar_set_value(progress, 0.5f);
 ```
 
 ---
 
-### VenomAccordion
+### VaxpAccordion
 
 Collapsible sections.
 
 ```c
-VenomAccordion* accordion = (VenomAccordion*)venom_accordion_create().value;
+VaxpAccordion* accordion = (VaxpAccordion*)vaxp_accordion_create().value;
 
-venom_accordion_add_section(accordion, "Section 1", content1);
-venom_accordion_add_section(accordion, "Section 2", content2);
-venom_accordion_add_section(accordion, "Section 3", content3);
+vaxp_accordion_add_section(accordion, "Section 1", content1);
+vaxp_accordion_add_section(accordion, "Section 2", content2);
+vaxp_accordion_add_section(accordion, "Section 3", content3);
 
 /* API */
-venom_accordion_expand(accordion, 0);
-venom_accordion_collapse(accordion, 0);
-venom_accordion_toggle(accordion, 1);
-venom_accordion_expand_all(accordion);
-venom_accordion_collapse_all(accordion);
+vaxp_accordion_expand(accordion, 0);
+vaxp_accordion_collapse(accordion, 0);
+vaxp_accordion_toggle(accordion, 1);
+vaxp_accordion_expand_all(accordion);
+vaxp_accordion_collapse_all(accordion);
 ```
 
 ---
 
-### VenomStepper
+### VaxpStepper
 
 Step indicator for wizards.
 
 ```c
-VenomStepper* stepper = (VenomStepper*)venom_stepper_create().value;
+VaxpStepper* stepper = (VaxpStepper*)vaxp_stepper_create().value;
 
-venom_stepper_add_step(stepper, "Account");
-venom_stepper_add_step(stepper, "Details");
-venom_stepper_add_step(stepper, "Review");
-venom_stepper_add_step(stepper, "Complete");
+vaxp_stepper_add_step(stepper, "Account");
+vaxp_stepper_add_step(stepper, "Details");
+vaxp_stepper_add_step(stepper, "Review");
+vaxp_stepper_add_step(stepper, "Complete");
 
 /* API */
-venom_stepper_set_current(stepper, 1);
-venom_stepper_next(stepper);         /* Marks current as complete, moves to next */
-venom_stepper_prev(stepper);
-venom_stepper_complete_step(stepper, 0);
-venom_stepper_set_error(stepper, 2, VENOM_TRUE);
+vaxp_stepper_set_current(stepper, 1);
+vaxp_stepper_next(stepper);         /* Marks current as complete, moves to next */
+vaxp_stepper_prev(stepper);
+vaxp_stepper_complete_step(stepper, 0);
+vaxp_stepper_set_error(stepper, 2, VAXP_TRUE);
 ```
 
 ---
 
 ## Advanced Pickers
 
-### VenomPopover
+### VaxpPopover
 
 Anchored popup with arrow, multiple placements, and auto-close.
 
 ```c
-void on_popover_open(VenomPopover* popover, VenomBool open, void* data) {
+void on_popover_open(VaxpPopover* popover, VaxpBool open, void* data) {
     printf("Popover %s\n", open ? "opened" : "closed");
 }
 
-VenomWidget* popover = venom_popover(
+VaxpWidget* popover = vaxp_popover(
     .anchor = button_widget,
     .content = menu_content,
-    .placement = VENOM_POPOVER_BOTTOM,  /* TOP, BOTTOM, LEFT, RIGHT + _START/_END */
-    .trigger = VENOM_POPOVER_TRIGGER_CLICK,  /* CLICK, HOVER, FOCUS, MANUAL */
-    .show_arrow = VENOM_TRUE,
+    .placement = VAXP_POPOVER_BOTTOM,  /* TOP, BOTTOM, LEFT, RIGHT + _START/_END */
+    .trigger = VAXP_POPOVER_TRIGGER_CLICK,  /* CLICK, HOVER, FOCUS, MANUAL */
+    .show_arrow = VAXP_TRUE,
     .offset = 8.0f
 );
 
 /* API */
-venom_popover_open(popover);
-venom_popover_close(popover);
-venom_popover_toggle(popover);
-VenomBool is_open = venom_popover_is_open(popover);
+vaxp_popover_open(popover);
+vaxp_popover_close(popover);
+vaxp_popover_toggle(popover);
+VaxpBool is_open = vaxp_popover_is_open(popover);
 ```
 
 ---
 
-### VenomCalendar
+### VaxpCalendar
 
 Full calendar widget with month navigation and date selection.
 
 ```c
-void on_date_select(VenomCalendar* cal, VenomDate date, void* data) {
+void on_date_select(VaxpCalendar* cal, VaxpDate date, void* data) {
     printf("Selected: %04d-%02d-%02d\n", date.year, date.month, date.day);
 }
 
-VenomWidget* calendar = venom_calendar(
-    .initial_date = venom_date_today(),
+VaxpWidget* calendar = vaxp_calendar(
+    .initial_date = vaxp_date_today(),
     .on_select = on_date_select
 );
 
 /* API */
-venom_calendar_go_to_today(calendar);
-venom_calendar_prev_month(calendar);
-venom_calendar_next_month(calendar);
-venom_calendar_select_date(calendar, (VenomDate){ 2024, 12, 25 });
-VenomDate selected = venom_calendar_get_selected(calendar);
+vaxp_calendar_go_to_today(calendar);
+vaxp_calendar_prev_month(calendar);
+vaxp_calendar_next_month(calendar);
+vaxp_calendar_select_date(calendar, (VaxpDate){ 2024, 12, 25 });
+VaxpDate selected = vaxp_calendar_get_selected(calendar);
 ```
 
 ---
 
-### VenomDatePicker
+### VaxpDatePicker
 
 Date input field with dropdown calendar.
 
 ```c
-void on_date_change(VenomDatePicker* picker, VenomDate date, void* data) {
+void on_date_change(VaxpDatePicker* picker, VaxpDate date, void* data) {
     printf("Date: %04d-%02d-%02d\n", date.year, date.month, date.day);
 }
 
-VenomWidget* date_picker = venom_date_picker(
-    .initial_date = venom_date_today(),
+VaxpWidget* date_picker = vaxp_date_picker(
+    .initial_date = vaxp_date_today(),
     .placeholder = "Select date...",
     .format = "YYYY-MM-DD",
     .on_change = on_date_change
 );
 
 /* API */
-venom_date_picker_set_date(picker, (VenomDate){ 2024, 1, 15 });
-VenomDate date = venom_date_picker_get_date(picker);
-venom_date_picker_open(picker);
-venom_date_picker_close(picker);
+vaxp_date_picker_set_date(picker, (VaxpDate){ 2024, 1, 15 });
+VaxpDate date = vaxp_date_picker_get_date(picker);
+vaxp_date_picker_open(picker);
+vaxp_date_picker_close(picker);
 ```
 
 ---
 
-### VenomTimePicker
+### VaxpTimePicker
 
 Time input with hour/minute/second selection.
 
 ```c
-void on_time_change(VenomTimePicker* picker, VenomTime time, void* data) {
+void on_time_change(VaxpTimePicker* picker, VaxpTime time, void* data) {
     printf("Time: %02d:%02d:%02d\n", time.hour, time.minute, time.second);
 }
 
-VenomWidget* time_picker = venom_time_picker(
-    .initial_time = (VenomTime){ 14, 30, 0 },
-    .use_24h = VENOM_TRUE,
-    .show_seconds = VENOM_FALSE,
+VaxpWidget* time_picker = vaxp_time_picker(
+    .initial_time = (VaxpTime){ 14, 30, 0 },
+    .use_24h = VAXP_TRUE,
+    .show_seconds = VAXP_FALSE,
     .on_change = on_time_change
 );
 
 /* API */
-venom_time_picker_set_time(picker, (VenomTime){ 9, 0, 0 });
-VenomTime time = venom_time_picker_get_time(picker);
-venom_time_picker_set_24h(picker, VENOM_FALSE);
-venom_time_picker_set_minute_step(picker, 15);  /* 15-minute intervals */
+vaxp_time_picker_set_time(picker, (VaxpTime){ 9, 0, 0 });
+VaxpTime time = vaxp_time_picker_get_time(picker);
+vaxp_time_picker_set_24h(picker, VAXP_FALSE);
+vaxp_time_picker_set_minute_step(picker, 15);  /* 15-minute intervals */
 ```
 
 ---
 
-### VenomColorPicker
+### VaxpColorPicker
 
 Full HSV color picker with saturation/value square, hue bar, and alpha slider.
 
 ```c
-void on_color_change(VenomColorPicker* picker, VenomColor color, void* data) {
+void on_color_change(VaxpColorPicker* picker, VaxpColor color, void* data) {
     printf("Color: #%02X%02X%02X (alpha: %d)\n", 
            color.r, color.g, color.b, color.a);
 }
 
-VenomWidget* color_picker = venom_color_picker(
-    .initial_color = (VenomColor){ 255, 0, 0, 255 },
-    .mode = VENOM_COLOR_PICKER_HSV,  /* HSV, RGB, PALETTE */
-    .show_alpha = VENOM_TRUE,
+VaxpWidget* color_picker = vaxp_color_picker(
+    .initial_color = (VaxpColor){ 255, 0, 0, 255 },
+    .mode = VAXP_COLOR_PICKER_HSV,  /* HSV, RGB, PALETTE */
+    .show_alpha = VAXP_TRUE,
     .on_change = on_color_change
 );
 
 /* API */
-venom_color_picker_set_color(picker, (VenomColor){ 0, 128, 255, 255 });
-VenomColor color = venom_color_picker_get_color(picker);
-venom_color_picker_set_show_alpha(picker, VENOM_FALSE);
+vaxp_color_picker_set_color(picker, (VaxpColor){ 0, 128, 255, 255 });
+VaxpColor color = vaxp_color_picker_get_color(picker);
+vaxp_color_picker_set_show_alpha(picker, VAXP_FALSE);
 ```
 
 ---
 
-### VenomFileChooser
+### VaxpFileChooser
 
 File browser with directory navigation, filtering, and selection.
 
 ```c
-void on_file_confirm(VenomFileChooser* chooser, const char* path, void* data) {
+void on_file_confirm(VaxpFileChooser* chooser, const char* path, void* data) {
     printf("Selected file: %s\n", path);
 }
 
-VenomWidget* file_chooser = venom_file_chooser(
-    .mode = VENOM_FILE_CHOOSER_OPEN,  /* OPEN, SAVE, SELECT_FOLDER, OPEN_MULTIPLE */
+VaxpWidget* file_chooser = vaxp_file_chooser(
+    .mode = VAXP_FILE_CHOOSER_OPEN,  /* OPEN, SAVE, SELECT_FOLDER, OPEN_MULTIPLE */
     .initial_path = "/home/user",
     .filter = "*.txt;*.md",
     .on_confirm = on_file_confirm
 );
 
 /* API */
-venom_file_chooser_set_path(chooser, "/home/user/documents");
-const char* path = venom_file_chooser_get_path(chooser);
-const char* selected = venom_file_chooser_get_selected(chooser);
-venom_file_chooser_set_filter(chooser, "*.png;*.jpg");
-venom_file_chooser_set_show_hidden(chooser, VENOM_TRUE);
-venom_file_chooser_go_up(chooser);
-venom_file_chooser_refresh(chooser);
+vaxp_file_chooser_set_path(chooser, "/home/user/documents");
+const char* path = vaxp_file_chooser_get_path(chooser);
+const char* selected = vaxp_file_chooser_get_selected(chooser);
+vaxp_file_chooser_set_filter(chooser, "*.png;*.jpg");
+vaxp_file_chooser_set_show_hidden(chooser, VAXP_TRUE);
+vaxp_file_chooser_go_up(chooser);
+vaxp_file_chooser_refresh(chooser);
 ```
 
 ---
 
 ## Desktop UI Widgets
 
-### VenomMenuBar
+### VaxpMenuBar
 
 Classic desktop-style menu bar (File, Edit, View, etc.).
 
 ```c
 /* Create menu bar */
-VenomMenuBar* menubar = (VenomMenuBar*)venom_menubar_create().value;
+VaxpMenuBar* menubar = (VaxpMenuBar*)vaxp_menubar_create().value;
 
 /* Create submenus using ContextMenu */
-VenomContextMenu* file_menu = (VenomContextMenu*)venom_context_menu_create().value;
-venom_context_menu_add_item(file_menu, "New", on_new, NULL);
-venom_context_menu_add_item(file_menu, "Open", on_open, NULL);
-venom_context_menu_add_separator(file_menu);
-venom_context_menu_add_item(file_menu, "Exit", on_exit, NULL);
+VaxpContextMenu* file_menu = (VaxpContextMenu*)vaxp_context_menu_create().value;
+vaxp_context_menu_add_item(file_menu, "New", on_new, NULL);
+vaxp_context_menu_add_item(file_menu, "Open", on_open, NULL);
+vaxp_context_menu_add_separator(file_menu);
+vaxp_context_menu_add_item(file_menu, "Exit", on_exit, NULL);
 
-VenomContextMenu* edit_menu = (VenomContextMenu*)venom_context_menu_create().value;
-venom_context_menu_add_item(edit_menu, "Undo", on_undo, NULL);
-venom_context_menu_add_item(edit_menu, "Redo", on_redo, NULL);
+VaxpContextMenu* edit_menu = (VaxpContextMenu*)vaxp_context_menu_create().value;
+vaxp_context_menu_add_item(edit_menu, "Undo", on_undo, NULL);
+vaxp_context_menu_add_item(edit_menu, "Redo", on_redo, NULL);
 
 /* Add menus to bar */
-venom_menubar_add_menu(menubar, "File", file_menu);
-venom_menubar_add_menu(menubar, "Edit", edit_menu);
+vaxp_menubar_add_menu(menubar, "File", file_menu);
+vaxp_menubar_add_menu(menubar, "Edit", edit_menu);
 
 /* Or with mnemonic (Alt+F) */
-venom_menubar_add_menu_with_mnemonic(menubar, "_File", file_menu);
+vaxp_menubar_add_menu_with_mnemonic(menubar, "_File", file_menu);
 
 /* API */
-venom_menubar_set_background(menubar, (VenomColor){240, 240, 240, 255});
-venom_menubar_set_height(menubar, 28.0f);
-venom_menubar_open_menu(menubar, 0);  /* Open first menu */
-venom_menubar_close_menus(menubar);
+vaxp_menubar_set_background(menubar, (VaxpColor){240, 240, 240, 255});
+vaxp_menubar_set_height(menubar, 28.0f);
+vaxp_menubar_open_menu(menubar, 0);  /* Open first menu */
+vaxp_menubar_close_menus(menubar);
 ```
 
 ---
 
-### VenomToolbar
+### VaxpToolbar
 
 Horizontal bar with tool buttons.
 
 ```c
-void on_tool_click(VenomToolbar* bar, VenomU32 index, void* data) {
+void on_tool_click(VaxpToolbar* bar, VaxpU32 index, void* data) {
     printf("Tool %u clicked\n", index);
 }
 
 /* Create toolbar */
-VenomToolbar* toolbar = (VenomToolbar*)venom_toolbar_create().value;
+VaxpToolbar* toolbar = (VaxpToolbar*)vaxp_toolbar_create().value;
 
 /* Add buttons */
-venom_toolbar_add_button(toolbar, "📄", "New", "Create new file", on_tool_click, NULL);
-venom_toolbar_add_button(toolbar, "📂", "Open", "Open file", on_tool_click, NULL);
-venom_toolbar_add_button(toolbar, "💾", "Save", "Save file", on_tool_click, NULL);
+vaxp_toolbar_add_button(toolbar, "📄", "New", "Create new file", on_tool_click, NULL);
+vaxp_toolbar_add_button(toolbar, "📂", "Open", "Open file", on_tool_click, NULL);
+vaxp_toolbar_add_button(toolbar, "💾", "Save", "Save file", on_tool_click, NULL);
 
 /* Add separator */
-venom_toolbar_add_separator(toolbar);
+vaxp_toolbar_add_separator(toolbar);
 
 /* Add toggle buttons */
-venom_toolbar_add_toggle(toolbar, "B", "Bold", "Toggle bold", VENOM_FALSE, on_tool_click, NULL);
-venom_toolbar_add_toggle(toolbar, "I", "Italic", "Toggle italic", VENOM_FALSE, on_tool_click, NULL);
+vaxp_toolbar_add_toggle(toolbar, "B", "Bold", "Toggle bold", VAXP_FALSE, on_tool_click, NULL);
+vaxp_toolbar_add_toggle(toolbar, "I", "Italic", "Toggle italic", VAXP_FALSE, on_tool_click, NULL);
 
 /* Add flexible spacer (pushes remaining items to right) */
-venom_toolbar_add_spacer(toolbar);
+vaxp_toolbar_add_spacer(toolbar);
 
 /* API */
-venom_toolbar_set_style(toolbar, VENOM_TOOLBAR_STYLE_ICON_ONLY);  /* ICON_ONLY, TEXT_ONLY, ICON_TEXT */
-venom_toolbar_set_height(toolbar, 40.0f);
-venom_toolbar_set_button_size(toolbar, 32.0f);
-venom_toolbar_set_enabled(toolbar, 2, VENOM_FALSE);  /* Disable save button */
-venom_toolbar_set_toggled(toolbar, 3, VENOM_TRUE);   /* Set bold on */
+vaxp_toolbar_set_style(toolbar, VAXP_TOOLBAR_STYLE_ICON_ONLY);  /* ICON_ONLY, TEXT_ONLY, ICON_TEXT */
+vaxp_toolbar_set_height(toolbar, 40.0f);
+vaxp_toolbar_set_button_size(toolbar, 32.0f);
+vaxp_toolbar_set_enabled(toolbar, 2, VAXP_FALSE);  /* Disable save button */
+vaxp_toolbar_set_toggled(toolbar, 3, VAXP_TRUE);   /* Set bold on */
 ```
 
 ---
 
-### VenomTitleBar
+### VaxpTitleBar
 
 Custom window title bar with control buttons.
 
 ```c
-void on_close(VenomTitleBar* bar, void* data) {
+void on_close(VaxpTitleBar* bar, void* data) {
     printf("Close button clicked\n");
     /* Exit app */
 }
 
-void on_drag(VenomTitleBar* bar, VenomI32 dx, VenomI32 dy, void* data) {
+void on_drag(VaxpTitleBar* bar, VaxpI32 dx, VaxpI32 dy, void* data) {
     /* Move window */
-    venom_window_move_by(window, dx, dy);
+    vaxp_window_move_by(window, dx, dy);
 }
 
 /* Create title bar */
-VenomTitleBar* titlebar = (VenomTitleBar*)venom_titlebar_create("My Application").value;
+VaxpTitleBar* titlebar = (VaxpTitleBar*)vaxp_titlebar_create("My Application").value;
 
 /* Set callbacks */
-venom_titlebar_on_minimize(titlebar, on_minimize, NULL);
-venom_titlebar_on_maximize(titlebar, on_maximize, NULL);
-venom_titlebar_on_restore(titlebar, on_restore, NULL);  /* When clicking max while maximized */
-venom_titlebar_on_close(titlebar, on_close, NULL);
-venom_titlebar_on_drag(titlebar, on_drag, NULL);  /* For window movement */
+vaxp_titlebar_on_minimize(titlebar, on_minimize, NULL);
+vaxp_titlebar_on_maximize(titlebar, on_maximize, NULL);
+vaxp_titlebar_on_restore(titlebar, on_restore, NULL);  /* When clicking max while maximized */
+vaxp_titlebar_on_close(titlebar, on_close, NULL);
+vaxp_titlebar_on_drag(titlebar, on_drag, NULL);  /* For window movement */
 
 /* Configure buttons */
-venom_titlebar_set_buttons(titlebar, 
-    VENOM_TITLEBAR_BUTTON_MINIMIZE | 
-    VENOM_TITLEBAR_BUTTON_MAXIMIZE | 
-    VENOM_TITLEBAR_BUTTON_CLOSE);
+vaxp_titlebar_set_buttons(titlebar, 
+    VAXP_TITLEBAR_BUTTON_MINIMIZE | 
+    VAXP_TITLEBAR_BUTTON_MAXIMIZE | 
+    VAXP_TITLEBAR_BUTTON_CLOSE);
 
 /* API */
-venom_titlebar_set_title(titlebar, "New Title");
-venom_titlebar_set_maximized(titlebar, VENOM_TRUE);  /* Changes maximize icon */
-venom_titlebar_set_center_title(titlebar, VENOM_TRUE);
-venom_titlebar_set_height(titlebar, 32.0f);
+vaxp_titlebar_set_title(titlebar, "New Title");
+vaxp_titlebar_set_maximized(titlebar, VAXP_TRUE);  /* Changes maximize icon */
+vaxp_titlebar_set_center_title(titlebar, VAXP_TRUE);
+vaxp_titlebar_set_height(titlebar, 32.0f);
 
 /* Themes */
-venom_titlebar_apply_dark_theme(titlebar);
-venom_titlebar_apply_light_theme(titlebar);
+vaxp_titlebar_apply_dark_theme(titlebar);
+vaxp_titlebar_apply_light_theme(titlebar);
 
 /* Add custom widgets */
-venom_titlebar_add_left_widget(titlebar, menu_button);
-venom_titlebar_add_right_widget(titlebar, search_button);
+vaxp_titlebar_add_left_widget(titlebar, menu_button);
+vaxp_titlebar_add_right_widget(titlebar, search_button);
 ```
 
 ---
@@ -1374,54 +1374,54 @@ venom_titlebar_add_right_widget(titlebar, search_button);
 
 
 ```c
-#include <venomui.h>
+#include <vaxpui.h>
 
-void on_button_click(VenomWidget* btn, void* data) {
+void on_button_click(VaxpWidget* btn, void* data) {
     printf("Button clicked!\n");
 }
 
 int main(void) {
-    /* Initialize VENOMUI */
-    venom_init();
+    /* Initialize VAXPUI */
+    vaxp_init();
     
     /* Create main window */
-    VenomWindow* window = venom_window_create("My App", 800, 600);
+    VaxpWindow* window = vaxp_window_create("My App", 800, 600);
     
     /* Create layout */
-    VenomWidget* root = venom_container(
-        .direction = VENOM_DIRECTION_VERTICAL,
-        .padding = (VenomInsets){ 20, 20, 20, 20 },
+    VaxpWidget* root = vaxp_container(
+        .direction = VAXP_DIRECTION_VERTICAL,
+        .padding = (VaxpInsets){ 20, 20, 20, 20 },
         .spacing = 16
     );
     
     /* Add header */
-    VenomWidget* header = venom_label(
-        .text = "Welcome to VENOMUI",
+    VaxpWidget* header = vaxp_label(
+        .text = "Welcome to VAXPUI",
         .font_size = 24
     );
-    venom_container_add_child((VenomContainer*)root, header);
+    vaxp_container_add_child((VaxpContainer*)root, header);
     
     /* Add input */
-    VenomWidget* input = venom_text_input(
+    VaxpWidget* input = vaxp_text_input(
         .placeholder = "Enter your name..."
     );
-    venom_container_add_child((VenomContainer*)root, input);
+    vaxp_container_add_child((VaxpContainer*)root, input);
     
     /* Add button */
-    VenomWidget* button = venom_button(
+    VaxpWidget* button = vaxp_button(
         .label = "Submit",
         .on_click = on_button_click
     );
-    venom_container_add_child((VenomContainer*)root, button);
+    vaxp_container_add_child((VaxpContainer*)root, button);
     
     /* Set window content */
-    venom_window_set_content(window, root);
+    vaxp_window_set_content(window, root);
     
     /* Run application */
-    venom_app_run();
+    vaxp_app_run();
     
     /* Cleanup */
-    venom_shutdown();
+    vaxp_shutdown();
     return 0;
 }
 ```
@@ -1443,4 +1443,4 @@ meson compile -C build
 
 ---
 
-*Documentation generated for VENOMUI v0.1.0*
+*Documentation generated for VAXPUI v0.1.0*

@@ -1,11 +1,11 @@
-# VENOMUI Quick Start Guide
+# VAXPUI Quick Start Guide
 
 ## Installation
 
 ```bash
 # Clone repository
-git clone https://github.com/your-repo/venomui.git
-cd venomui
+git clone https://github.com/your-repo/vaxpui.git
+cd vaxpui
 
 # Build
 meson setup build
@@ -20,17 +20,17 @@ sudo meson install -C build
 ### Using pkg-config (after installation)
 
 ```bash
-gcc myapp.c -o myapp $(pkg-config --cflags --libs venomui)
+gcc myapp.c -o myapp $(pkg-config --cflags --libs vaxpui)
 ```
 
 ### Using Meson subproject
 
 In your `meson.build`:
 ```meson
-venomui_proj = subproject('venomui')
-venomui_dep = venomui_proj.get_variable('venomui_dep')
+vaxpui_proj = subproject('vaxpui')
+vaxpui_dep = vaxpui_proj.get_variable('vaxpui_dep')
 
-executable('myapp', 'main.c', dependencies: venomui_dep)
+executable('myapp', 'main.c', dependencies: vaxpui_dep)
 ```
 
 ---
@@ -38,33 +38,33 @@ executable('myapp', 'main.c', dependencies: venomui_dep)
 ## Hello World
 
 ```c
-#include <venomui.h>
+#include <vaxpui.h>
 
 int main(void) {
     /* Initialize */
-    venom_init();
+    vaxp_init();
     
     /* Create window */
-    VenomWindow* window = venom_window_create("Hello VENOMUI", 400, 300);
+    VaxpWindow* window = vaxp_window_create("Hello VAXPUI", 400, 300);
     
     /* Create content */
-    VenomWidget* content = venom_container(
-        .direction = VENOM_DIRECTION_VERTICAL,
-        .padding = (VenomInsets){ 20, 20, 20, 20 },
-        .alignment = VENOM_ALIGN_CENTER
+    VaxpWidget* content = vaxp_container(
+        .direction = VAXP_DIRECTION_VERTICAL,
+        .padding = (VaxpInsets){ 20, 20, 20, 20 },
+        .alignment = VAXP_ALIGN_CENTER
     );
     
-    VenomWidget* label = venom_label(
+    VaxpWidget* label = vaxp_label(
         .text = "Hello, World!",
         .font_size = 32.0f
     );
     
-    venom_container_add_child((VenomContainer*)content, label);
-    venom_window_set_content(window, content);
+    vaxp_container_add_child((VaxpContainer*)content, label);
+    vaxp_window_set_content(window, content);
     
     /* Run */
-    venom_app_run();
-    venom_shutdown();
+    vaxp_app_run();
+    vaxp_shutdown();
     
     return 0;
 }
@@ -78,83 +78,83 @@ int main(void) {
 
 ```c
 /* Vertical layout with header, content, footer */
-VenomWidget* root = venom_container(.direction = VENOM_DIRECTION_VERTICAL);
+VaxpWidget* root = vaxp_container(.direction = VAXP_DIRECTION_VERTICAL);
 
-VenomWidget* header = create_header();
-VenomWidget* content = venom_container(.direction = VENOM_DIRECTION_VERTICAL);
+VaxpWidget* header = create_header();
+VaxpWidget* content = vaxp_container(.direction = VAXP_DIRECTION_VERTICAL);
 content->layout.flex = 1.0f;  /* Take remaining space */
-VenomWidget* footer = create_footer();
+VaxpWidget* footer = create_footer();
 
-venom_container_add_child(root, header);
-venom_container_add_child(root, content);
-venom_container_add_child(root, footer);
+vaxp_container_add_child(root, header);
+vaxp_container_add_child(root, content);
+vaxp_container_add_child(root, footer);
 ```
 
 ### Form Pattern
 
 ```c
-VenomWidget* form = venom_container(
-    .direction = VENOM_DIRECTION_VERTICAL,
+VaxpWidget* form = vaxp_container(
+    .direction = VAXP_DIRECTION_VERTICAL,
     .spacing = 12.0f
 );
 
 /* Name field */
-VenomWidget* name_row = venom_container(.direction = VENOM_DIRECTION_VERTICAL, .spacing = 4);
-venom_container_add_child(name_row, venom_label(.text = "Name"));
-venom_container_add_child(name_row, venom_text_input(.placeholder = "Enter name"));
-venom_container_add_child(form, name_row);
+VaxpWidget* name_row = vaxp_container(.direction = VAXP_DIRECTION_VERTICAL, .spacing = 4);
+vaxp_container_add_child(name_row, vaxp_label(.text = "Name"));
+vaxp_container_add_child(name_row, vaxp_text_input(.placeholder = "Enter name"));
+vaxp_container_add_child(form, name_row);
 
 /* Email field */
-VenomWidget* email_row = venom_container(.direction = VENOM_DIRECTION_VERTICAL, .spacing = 4);
-venom_container_add_child(email_row, venom_label(.text = "Email"));
-venom_container_add_child(email_row, venom_text_input(.placeholder = "Enter email"));
-venom_container_add_child(form, email_row);
+VaxpWidget* email_row = vaxp_container(.direction = VAXP_DIRECTION_VERTICAL, .spacing = 4);
+vaxp_container_add_child(email_row, vaxp_label(.text = "Email"));
+vaxp_container_add_child(email_row, vaxp_text_input(.placeholder = "Enter email"));
+vaxp_container_add_child(form, email_row);
 
 /* Submit button */
-venom_container_add_child(form, venom_button(.label = "Submit", .on_click = on_submit));
+vaxp_container_add_child(form, vaxp_button(.label = "Submit", .on_click = on_submit));
 ```
 
 ### Card List Pattern
 
 ```c
-VenomWidget* build_card(const char* title, const char* desc) {
-    VenomWidget* content = venom_container(
-        .direction = VENOM_DIRECTION_VERTICAL,
+VaxpWidget* build_card(const char* title, const char* desc) {
+    VaxpWidget* content = vaxp_container(
+        .direction = VAXP_DIRECTION_VERTICAL,
         .spacing = 8
     );
-    venom_container_add_child(content, venom_label(.text = title, .font_size = 18));
-    venom_container_add_child(content, venom_label(.text = desc));
+    vaxp_container_add_child(content, vaxp_label(.text = title, .font_size = 18));
+    vaxp_container_add_child(content, vaxp_label(.text = desc));
     
-    return venom_card(.child = content, .elevation = 2, .padding = 16);
+    return vaxp_card(.child = content, .elevation = 2, .padding = 16);
 }
 
-VenomWidget* card_list = venom_container(.direction = VENOM_DIRECTION_VERTICAL, .spacing = 16);
-venom_container_add_child(card_list, build_card("Card 1", "Description 1"));
-venom_container_add_child(card_list, build_card("Card 2", "Description 2"));
+VaxpWidget* card_list = vaxp_container(.direction = VAXP_DIRECTION_VERTICAL, .spacing = 16);
+vaxp_container_add_child(card_list, build_card("Card 1", "Description 1"));
+vaxp_container_add_child(card_list, build_card("Card 2", "Description 2"));
 ```
 
 ### Tab Navigation Pattern
 
 ```c
 /* Create pages */
-VenomWidget* home_page = create_home_page();
-VenomWidget* settings_page = create_settings_page();
-VenomWidget* about_page = create_about_page();
+VaxpWidget* home_page = create_home_page();
+VaxpWidget* settings_page = create_settings_page();
+VaxpWidget* about_page = create_about_page();
 
 /* Create tab bar and view */
-VenomTabBar* tabs = (VenomTabBar*)venom_tab_bar_create().value;
-VenomTabView* view = (VenomTabView*)venom_tab_view_create().value;
-venom_tab_bar_link_view(tabs, view);
+VaxpTabBar* tabs = (VaxpTabBar*)vaxp_tab_bar_create().value;
+VaxpTabView* view = (VaxpTabView*)vaxp_tab_view_create().value;
+vaxp_tab_bar_link_view(tabs, view);
 
-venom_tab_bar_add_tab(tabs, "Home", home_page);
-venom_tab_bar_add_tab(tabs, "Settings", settings_page);
-venom_tab_bar_add_tab(tabs, "About", about_page);
+vaxp_tab_bar_add_tab(tabs, "Home", home_page);
+vaxp_tab_bar_add_tab(tabs, "Settings", settings_page);
+vaxp_tab_bar_add_tab(tabs, "About", about_page);
 
 /* Layout */
-VenomWidget* layout = venom_container(.direction = VENOM_DIRECTION_VERTICAL);
-venom_container_add_child(layout, (VenomWidget*)tabs);
-venom_container_add_child(layout, (VenomWidget*)view);
-((VenomWidget*)view)->layout.flex = 1.0f;
+VaxpWidget* layout = vaxp_container(.direction = VAXP_DIRECTION_VERTICAL);
+vaxp_container_add_child(layout, (VaxpWidget*)tabs);
+vaxp_container_add_child(layout, (VaxpWidget*)view);
+((VaxpWidget*)view)->layout.flex = 1.0f;
 ```
 
 ---
@@ -165,13 +165,13 @@ venom_container_add_child(layout, (VenomWidget*)view);
 
 ```c
 /* Predefined colors */
-VenomColor red = VENOM_COLOR_RED;
-VenomColor blue = VENOM_COLOR_BLUE;
-VenomColor white = VENOM_COLOR_WHITE;
-VenomColor transparent = VENOM_COLOR_TRANSPARENT;
+VaxpColor red = VAXP_COLOR_RED;
+VaxpColor blue = VAXP_COLOR_BLUE;
+VaxpColor white = VAXP_COLOR_WHITE;
+VaxpColor transparent = VAXP_COLOR_TRANSPARENT;
 
 /* Custom colors */
-VenomColor custom = { 
+VaxpColor custom = { 
     .r = 100, 
     .g = 150, 
     .b = 200, 
@@ -183,10 +183,10 @@ VenomColor custom = {
 
 ```c
 /* All sides equal */
-VenomInsets all = { 16, 16, 16, 16 };  /* top, right, bottom, left */
+VaxpInsets all = { 16, 16, 16, 16 };  /* top, right, bottom, left */
 
 /* Symmetric */
-VenomInsets symmetric = { 10, 20, 10, 20 };  /* vertical=10, horizontal=20 */
+VaxpInsets symmetric = { 10, 20, 10, 20 };  /* vertical=10, horizontal=20 */
 ```
 
 ---
@@ -196,12 +196,12 @@ VenomInsets symmetric = { 10, 20, 10, 20 };  /* vertical=10, horizontal=20 */
 ### Button Click
 
 ```c
-void handle_click(VenomWidget* widget, void* user_data) {
+void handle_click(VaxpWidget* widget, void* user_data) {
     const char* message = (const char*)user_data;
     printf("Clicked: %s\n", message);
 }
 
-VenomWidget* btn = venom_button(
+VaxpWidget* btn = vaxp_button(
     .label = "Click Me",
     .on_click = handle_click,
     .data = "Button was clicked!"
@@ -211,11 +211,11 @@ VenomWidget* btn = venom_button(
 ### Input Change
 
 ```c
-void handle_change(VenomTextInput* input, const char* text, void* data) {
+void handle_change(VaxpTextInput* input, const char* text, void* data) {
     printf("Text changed: %s\n", text);
 }
 
-VenomWidget* input = venom_text_input(
+VaxpWidget* input = vaxp_text_input(
     .on_change = handle_change
 );
 ```
@@ -225,10 +225,10 @@ VenomWidget* input = venom_text_input(
 ## Best Practices
 
 1. **Always check result.ok** for create functions
-2. **Use reference counting** - `venom_ref()` and `venom_unref()`
+2. **Use reference counting** - `vaxp_ref()` and `vaxp_unref()`
 3. **Set layout.flex** for flexible sizing
 4. **Use compound literals** for inline config
-5. **Prefer macros** (`venom_button(...)`) over direct create calls
+5. **Prefer macros** (`vaxp_button(...)`) over direct create calls
 
 ---
 
@@ -240,5 +240,5 @@ meson setup build -Ddebug_memory=true
 meson compile -C build
 
 # Run with memory leak detection
-VENOM_DEBUG=1 ./build/myapp
+VAXP_DEBUG=1 ./build/myapp
 ```

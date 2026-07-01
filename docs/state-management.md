@@ -1,6 +1,6 @@
-# State Management in VENOMUI
+# State Management in VAXPUI
 
-VENOMUI uses the **BLoC/Cubit pattern** for state management, inspired by Flutter's BLoC library.
+VAXPUI uses the **BLoC/Cubit pattern** for state management, inspired by Flutter's BLoC library.
 
 ## Overview
 
@@ -49,15 +49,15 @@ static CounterState counter_reset(CounterState state) {
 ### 3. Create the Cubit
 
 ```c
-// Define the cubit with VENOM_DEFINE_CUBIT
-VENOM_DEFINE_CUBIT(Counter, CounterState,
-    VENOM_CUBIT_ACTION(increment, counter_increment),
-    VENOM_CUBIT_ACTION(decrement, counter_decrement),
-    VENOM_CUBIT_ACTION(reset, counter_reset)
+// Define the cubit with VAXP_DEFINE_CUBIT
+VAXP_DEFINE_CUBIT(Counter, CounterState,
+    VAXP_CUBIT_ACTION(increment, counter_increment),
+    VAXP_CUBIT_ACTION(decrement, counter_decrement),
+    VAXP_CUBIT_ACTION(reset, counter_reset)
 );
 
 // Create instance with initial state
-VenomCubit* counter_cubit = VENOM_CUBIT_CREATE(Counter, CounterState, { .count = 0 });
+VaxpCubit* counter_cubit = VAXP_CUBIT_CREATE(Counter, CounterState, { .count = 0 });
 ```
 
 ## Using the Cubit
@@ -66,9 +66,9 @@ VenomCubit* counter_cubit = VENOM_CUBIT_CREATE(Counter, CounterState, { .count =
 
 ```c
 // Call actions to emit new state
-VENOM_CUBIT_EMIT(counter_cubit, Counter, increment);
-VENOM_CUBIT_EMIT(counter_cubit, Counter, decrement);
-VENOM_CUBIT_EMIT(counter_cubit, Counter, reset);
+VAXP_CUBIT_EMIT(counter_cubit, Counter, increment);
+VAXP_CUBIT_EMIT(counter_cubit, Counter, decrement);
+VAXP_CUBIT_EMIT(counter_cubit, Counter, reset);
 ```
 
 ### Reading Current State
@@ -83,30 +83,30 @@ printf("Count: %d\n", state.count);
 
 ```c
 // Add a listener
-void on_counter_changed(VenomCubit* cubit, void* state, void* user_data) {
+void on_counter_changed(VaxpCubit* cubit, void* state, void* user_data) {
     CounterState* counter_state = (CounterState*)state;
     printf("Counter changed to: %d\n", counter_state->count);
 }
 
-venom_cubit_add_listener(counter_cubit, on_counter_changed, NULL);
+vaxp_cubit_add_listener(counter_cubit, on_counter_changed, NULL);
 ```
 
 ## BlocBuilder Widget
 
-Connect state to UI with `VENOM_BLOC_BUILDER`:
+Connect state to UI with `VAXP_BLOC_BUILDER`:
 
 ```c
-VenomWidget* build_counter_display(void* state, void* user_data) {
+VaxpWidget* build_counter_display(void* state, void* user_data) {
     CounterState* counter_state = (CounterState*)state;
     
     char text[32];
     snprintf(text, sizeof(text), "Count: %d", counter_state->count);
     
-    return venom_text(text);
+    return vaxp_text(text);
 }
 
 // In your build function:
-VenomWidget* counter_view = VENOM_BLOC_BUILDER(
+VaxpWidget* counter_view = VAXP_BLOC_BUILDER(
     .cubit = counter_cubit,
     .builder = build_counter_display,
     .user_data = NULL
@@ -116,7 +116,7 @@ VenomWidget* counter_view = VENOM_BLOC_BUILDER(
 ## Complete Example
 
 ```c
-#include <venom/venomui.h>
+#include <vaxp/vaxpui.h>
 
 // State
 typedef struct { int count; } CounterState;
@@ -126,47 +126,47 @@ static CounterState increment(CounterState s) { return (CounterState){ s.count +
 static CounterState decrement(CounterState s) { return (CounterState){ s.count - 1 }; }
 
 // Define cubit
-VENOM_DEFINE_CUBIT(Counter, CounterState,
-    VENOM_CUBIT_ACTION(increment, increment),
-    VENOM_CUBIT_ACTION(decrement, decrement)
+VAXP_DEFINE_CUBIT(Counter, CounterState,
+    VAXP_CUBIT_ACTION(increment, increment),
+    VAXP_CUBIT_ACTION(decrement, decrement)
 );
 
-static VenomCubit* counter_cubit;
+static VaxpCubit* counter_cubit;
 
 // Button handlers
-static void on_increment(VenomButton* btn, void* data) {
+static void on_increment(VaxpButton* btn, void* data) {
     (void)btn; (void)data;
-    VENOM_CUBIT_EMIT(counter_cubit, Counter, increment);
+    VAXP_CUBIT_EMIT(counter_cubit, Counter, increment);
 }
 
-static void on_decrement(VenomButton* btn, void* data) {
+static void on_decrement(VaxpButton* btn, void* data) {
     (void)btn; (void)data;
-    VENOM_CUBIT_EMIT(counter_cubit, Counter, decrement);
+    VAXP_CUBIT_EMIT(counter_cubit, Counter, decrement);
 }
 
 // Builder for counter display
-VenomWidget* counter_builder(void* state, void* data) {
+VaxpWidget* counter_builder(void* state, void* data) {
     CounterState* s = (CounterState*)state;
     char text[32];
     snprintf(text, sizeof(text), "%d", s->count);
-    return venom_text(text);
+    return vaxp_text(text);
 }
 
 // Main build function
-VenomWidget* build_app(void* data) {
-    return venom_center(
+VaxpWidget* build_app(void* data) {
+    return vaxp_center(
         .gap = 20,
-        .children = VENOM_CHILDREN(
-            venom_text("Counter Example"),
-            VENOM_BLOC_BUILDER(
+        .children = VAXP_CHILDREN(
+            vaxp_text("Counter Example"),
+            VAXP_BLOC_BUILDER(
                 .cubit = counter_cubit,
                 .builder = counter_builder
             ),
-            venom_row(
+            vaxp_row(
                 .gap = 10,
-                .children = VENOM_CHILDREN(
-                    venom_btn("-", .on_click = on_decrement),
-                    venom_btn("+", .on_click = on_increment)
+                .children = VAXP_CHILDREN(
+                    vaxp_btn("-", .on_click = on_decrement),
+                    vaxp_btn("+", .on_click = on_increment)
                 )
             )
         )
@@ -175,9 +175,9 @@ VenomWidget* build_app(void* data) {
 
 int main(void) {
     // Create cubit with initial state
-    counter_cubit = VENOM_CUBIT_CREATE(Counter, CounterState, { .count = 0 });
+    counter_cubit = VAXP_CUBIT_CREATE(Counter, CounterState, { .count = 0 });
     
-    int result = VENOM_APP(
+    int result = VAXP_APP(
         .title = "Counter",
         .width = 300,
         .height = 200,
@@ -185,7 +185,7 @@ int main(void) {
     );
     
     // Cleanup
-    venom_cubit_destroy(counter_cubit);
+    vaxp_cubit_destroy(counter_cubit);
     return result;
 }
 ```
@@ -221,16 +221,16 @@ static TodoState add_todo(TodoState state, const char* title) {
 
 ```c
 // Separate concerns into different cubits
-VenomCubit* auth_cubit;      // Authentication state
-VenomCubit* settings_cubit;  // App settings
-VenomCubit* data_cubit;      // Data/content
+VaxpCubit* auth_cubit;      // Authentication state
+VaxpCubit* settings_cubit;  // App settings
+VaxpCubit* data_cubit;      // Data/content
 ```
 
 ### 4. Clean Up Resources
 
 ```c
 // Always destroy cubits when done
-venom_cubit_destroy(my_cubit);
+vaxp_cubit_destroy(my_cubit);
 ```
 
 ## See Also
