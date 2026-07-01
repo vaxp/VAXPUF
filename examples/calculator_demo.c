@@ -180,13 +180,13 @@ static VaxpWidget* build_ui(void* ud) {
     
     /* Helper macros for buttons */
     #define NUM_BTN(label, val) \
-        vaxp_flex(vaxp_btn(label, .color = btn_num, .text_color = text_white, .corner_radius = 12, .on_click = cb_digit, .on_click_data = (void*)(intptr_t)val), 1)
+        vaxp_flex(vaxp_btn(label, .font_family = "Ubuntu", .size = 24, .color = btn_num, .text_color = text_white, .corner_radius = 12, .on_click = cb_digit, .on_click_data = (void*)(intptr_t)val), 1)
     
     #define TOP_BTN(label, cb) \
-        vaxp_flex(vaxp_btn(label, .color = btn_top, .text_color = text_white, .corner_radius = 12, .on_click = cb), 1)
+        vaxp_flex(vaxp_btn(label, .font_family = "Ubuntu", .size = 22, .color = btn_top, .text_color = text_white, .corner_radius = 12, .on_click = cb), 1)
         
     #define OP_BTN(label, op) \
-        vaxp_flex(vaxp_btn(label, .color = btn_op, .text_color = text_white, .corner_radius = 12, .on_click = cb_operator, .on_click_data = (void*)(intptr_t)op), 1)
+        vaxp_flex(vaxp_btn(label, .font_family = "Ubuntu", .size = 28, .color = btn_op, .text_color = text_white, .corner_radius = 12, .on_click = cb_operator, .on_click_data = (void*)(intptr_t)op), 1)
 
     return vaxp_col(
         .align = VAXP_ALIGN_STRETCH,
@@ -228,7 +228,7 @@ static VaxpWidget* build_ui(void* ud) {
                          * HOW TO ADJUST RESULT TEXT SIZE (حجم نص النتيجة أو الرقم):
                          * يمكنك تغيير الـ .size = 52 إلى أي رقم تريده لتكبير الرقم.
                          */
-                        vaxp_text(s->display, .size = 42, .color = VAXP_COLOR_WHITE)
+                        vaxp_text(s->display, .font_family = "Ubuntu", .size = 42, .color = VAXP_COLOR_WHITE)
                     )
                 ), 2 /* <--- نسبة الارتفاع للشاشة (غيرها لتكبير أو تصغير المساحة) */
             ),
@@ -276,9 +276,9 @@ static VaxpWidget* build_ui(void* ud) {
                              * HOW TO ADJUST BUTTON WIDTH (كيفية تعديل عرض الزر الواحد):
                              * زر الـ "0" يأخذ vaxp_flex(..., 2) لكي يكون عرضه ضعف الأزرار الأخرى.
                              */
-                            vaxp_flex(vaxp_btn("0", .color = btn_num, .text_color = text_white, .corner_radius = 12, .on_click = cb_digit, .on_click_data = (void*)(intptr_t)0), 2),
-                            vaxp_flex(vaxp_btn(".", .color = btn_num, .text_color = text_white, .corner_radius = 12, .on_click = cb_dot), 1),
-                            vaxp_flex(vaxp_btn("=", .color = btn_op, .text_color = text_white, .corner_radius = 12, .on_click = cb_equals), 1)
+                            vaxp_flex(vaxp_btn("0", .font_family = "Ubuntu", .color = btn_num, .text_color = text_white, .corner_radius = 12, .on_click = cb_digit, .on_click_data = (void*)(intptr_t)0), 2),
+                            vaxp_flex(vaxp_btn(".", .font_family = "Ubuntu", .color = btn_num, .text_color = text_white, .corner_radius = 12, .on_click = cb_dot), 1),
+                            vaxp_flex(vaxp_btn("=", .font_family = "Ubuntu", .color = btn_op, .text_color = text_white, .corner_radius = 12, .on_click = cb_equals), 1)
                         )), 1)
                     )
                 ), 3 /* <--- نسبة الارتفاع لمنطقة الأزرار مقارنة بالشاشة */

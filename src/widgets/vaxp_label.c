@@ -14,8 +14,8 @@
 
 static void label_init(VaxpWidget* widget) {
     VaxpLabel* label = (VaxpLabel*)widget;
-    
     label->text_color = VAXP_COLOR_BLACK;
+    label->font_family = NULL;
     label->font_size = 14.0f;
     label->align = VAXP_TEXT_ALIGN_LEFT;
     label->wrap = VAXP_FALSE;
@@ -27,6 +27,11 @@ static void label_destroy(VaxpWidget* widget) {
     if (label->text) {
         vaxp_free(label->text, strlen(label->text) + 1);
         label->text = NULL;
+    }
+    
+    if (label->font_family) {
+        vaxp_free(label->font_family, strlen(label->font_family) + 1);
+        label->font_family = NULL;
     }
     
     vaxp_widget_class.destroy(widget);
@@ -77,8 +82,10 @@ static void label_draw(VaxpWidget* widget, VaxpCanvas* canvas) {
     VaxpF32 y = (widget->bounds.height + label->font_size * 0.35f) / 2;
     
     VaxpPaint paint = vaxp_paint_fill(color);
-    /* Use the font pointer to pass font_size for now, as VaxpFont is not implemented */
-    vaxp_canvas_draw_text(canvas, label->text, x, y, (const VaxpFont*)&label->font_size, &paint);
+    VaxpFont font = {0};
+    font.family = label->font_family;
+    font.size = label->font_size;
+    vaxp_canvas_draw_text(canvas, label->text, x, y, &font, &paint);
 }
 
 /* ============================================================================
@@ -153,6 +160,22 @@ void vaxp_label_set_color(VaxpLabel* label, VaxpColor color) {
 void vaxp_label_set_font_size(VaxpLabel* label, VaxpF32 size) {
     if (!label) return;
     label->font_size = size;
+    vaxp_widget_invalidate_layout((VaxpWidget*)label);
+}
+
+void vaxp_label_set_font_family(VaxpLabel* label, const char* family) {
+    if (!label) return;
+    if (label->font_family) {
+        vaxp_free(label->font_family, strlen(label->font_family) + 1);
+        label->font_family = NULL;
+    }
+    if (family) {
+        size_t len = strlen(family);
+        label->font_family = vaxp_alloc(len + 1);
+        if (label->font_family) {
+            memcpy(label->font_family, family, len + 1);
+        }
+    }
     vaxp_widget_invalidate_layout((VaxpWidget*)label);
 }
 

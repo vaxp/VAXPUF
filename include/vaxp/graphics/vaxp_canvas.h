@@ -22,7 +22,12 @@ typedef struct VaxpCanvas VaxpCanvas;
 typedef struct VaxpPaint VaxpPaint;
 typedef struct VaxpPath VaxpPath;
 typedef struct VaxpImage VaxpImage;
-typedef struct VaxpFont VaxpFont;
+typedef struct VaxpFont {
+    const char* family;
+    VaxpF32 size;
+    VaxpBool bold;
+    VaxpBool italic;
+} VaxpFont;
 
 /* ============================================================================
  * PAINT - Describes how to draw

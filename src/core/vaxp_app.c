@@ -158,6 +158,9 @@ VaxpWidget* _vaxp_text_build(const char* text, const VaxpTextConfig* config) {
     
     VaxpLabel* label = (VaxpLabel*)result.value;
     
+    if (config->font_family) {
+        vaxp_label_set_font_family(label, config->font_family);
+    }
     if (config->size > 0) {
         vaxp_label_set_font_size(label, config->size);
     }
@@ -179,7 +182,13 @@ VaxpWidget* _vaxp_btn_build(const char* label, const VaxpButtonConfig* config) {
     
     VaxpButton* btn = (VaxpButton*)result.value;
     
-    /* Set colors */
+    if (config->font_family) {
+        vaxp_button_set_font_family(btn, config->font_family);
+    }
+    if (config->size > 0) {
+        btn->font_size = config->size; /* Alternatively add vaxp_button_set_font_size */
+    }
+    
     VaxpColor primary = config->color.a > 0 ? config->color : VAXP_PRIMARY;
     VaxpColor hover = vaxp_color_rgba(
         VAXP_MIN(primary.r + 20, 255),

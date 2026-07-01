@@ -29,8 +29,9 @@ static void button_init(VaxpWidget* widget) {
     btn->bg_hover_color = DEFAULT_HOVER;
     btn->bg_pressed_color = DEFAULT_PRESSED;
     btn->text_color = DEFAULT_TEXT;
-    btn->corner_radius = 6.0f;
-    btn->font_size = 14.0f;
+    btn->font_size = 16.0f;
+    btn->font_family = NULL;
+    btn->corner_radius = 4.0f;
     
     /* Default layout */
     widget->layout.padding = (VaxpInsets){ 8, 16, 8, 16 };
@@ -47,6 +48,11 @@ static void button_destroy(VaxpWidget* widget) {
     if (btn->label) {
         vaxp_free(btn->label, strlen(btn->label) + 1);
         btn->label = NULL;
+    }
+    
+    if (btn->font_family) {
+        vaxp_free(btn->font_family, strlen(btn->font_family) + 1);
+        btn->font_family = NULL;
     }
     
     /* Call parent destroy */
@@ -110,13 +116,16 @@ static void button_draw(VaxpWidget* widget, VaxpCanvas* canvas) {
     
     /* Draw text centered */
     if (btn->label) {
-        VaxpF32 text_width = strlen(btn->label) * (btn->font_size * 0.5f);
+        VaxpF32 text_width = strlen(btn->label) * (btn->font_size * 0.65f);
         VaxpF32 text_height = btn->font_size;
         VaxpF32 x = (widget->bounds.width - text_width) / 2;
         VaxpF32 y = (widget->bounds.height + text_height * 0.35f) / 2;  /* Baseline adjust */
         
         VaxpPaint text_paint = vaxp_paint_fill(btn->text_color);
-        vaxp_canvas_draw_text(canvas, btn->label, x, y, NULL, &text_paint);
+        VaxpFont font = {0};
+        font.family = btn->font_family;
+        font.size = btn->font_size;
+        vaxp_canvas_draw_text(canvas, btn->label, x, y, &font, &text_paint);
     }
 }
 
@@ -222,8 +231,25 @@ VaxpResult vaxp_button_set_label(VaxpButton* button, const char* label) {
     return VAXP_OK_UNIT();
 }
 
-const char* vaxp_button_get_label(const VaxpButton* button) {
-    return button ? button->label : NULL;
+const char* vaxp_button_get_label(const VaxpButton* btn) {
+    if (!btn) return NULL;
+    return btn->label;
+}
+
+void vaxp_button_set_font_family(VaxpButton* btn, const char* family) {
+    if (!btn) return;
+    if (btn->font_family) {
+        vaxp_free(btn->font_family, strlen(btn->font_family) + 1);
+        btn->font_family = NULL;
+    }
+    if (family) {
+        size_t len = strlen(family);
+        btn->font_family = vaxp_alloc(len + 1);
+        if (btn->font_family) {
+            memcpy(btn->font_family, family, len + 1);
+        }
+    }
+    vaxp_widget_invalidate_layout((VaxpWidget*)btn);
 }
 
 void vaxp_button_set_on_click(VaxpButton* button, VaxpButtonCallback callback, void* user_data) {

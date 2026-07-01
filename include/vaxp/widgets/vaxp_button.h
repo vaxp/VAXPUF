@@ -25,6 +25,7 @@ struct VaxpButton {
     VaxpWidget base;
     
     char* label;            /* Button text (owned) */
+    char* font_family;
     VaxpButtonCallback on_click;
     void* callback_data;
     
@@ -51,6 +52,11 @@ VaxpResultPtr vaxp_button_create(const char* label);
  * @brief Set button text
  */
 VaxpResult vaxp_button_set_label(VaxpButton* button, const char* label);
+
+/**
+ * @brief Set font family
+ */
+void vaxp_button_set_font_family(VaxpButton* button, const char* family);
 
 /**
  * @brief Get button text

@@ -135,6 +135,7 @@ int vaxp_run_app(const VaxpAppConfig* config);
 /* --------------- Text / Label --------------- */
 
 typedef struct VaxpTextConfig {
+    const char* font_family;
     VaxpColor color;
     VaxpF32 size;
     VaxpTextAlign align;
@@ -155,6 +156,8 @@ VaxpWidget* _vaxp_text_build(const char* text, const VaxpTextConfig* config);
 /* --------------- Button --------------- */
 
 typedef struct VaxpButtonConfig {
+    const char* font_family;
+    VaxpF32 size;
     VaxpColor color;           /* Primary color */
     VaxpColor text_color;
     VaxpF32 corner_radius;

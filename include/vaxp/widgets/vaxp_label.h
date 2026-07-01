@@ -27,6 +27,7 @@ typedef struct VaxpLabel {
     VaxpWidget base;
     
     char* text;             /* Label text (owned) */
+    char* font_family;
     VaxpColor text_color;
     VaxpF32 font_size;
     VaxpTextAlign align;
@@ -57,6 +58,11 @@ const char* vaxp_label_get_text(const VaxpLabel* label);
  * @brief Set text color
  */
 void vaxp_label_set_color(VaxpLabel* label, VaxpColor color);
+
+/**
+ * @brief Set font family
+ */
+void vaxp_label_set_font_family(VaxpLabel* label, const char* family);
 
 /**
  * @brief Set font size

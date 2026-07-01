@@ -206,12 +206,15 @@ static void skia_canvas_draw_text(VaxpCanvas* canvas, const char* text, VaxpF32 
                                    const VaxpFont* font, const VaxpPaint* paint) {
     VaxpSkiaCanvas* c = (VaxpSkiaCanvas*)canvas;
     SkPaint sk = vaxp_paint_to_sk(paint);
-    float actual_font_size = font ? *(const float*)font : 14.0f;
-    if (actual_font_size <= 0) actual_font_size = 14.0f;
+    float actual_font_size = (font && font->size > 0) ? font->size : 14.0f;
+    const char* actual_family = (font && font->family && font->family[0]) ? font->family : "Noto Sans";
     
-    /* Use default font for now */
-    SkFont skfont;
-    skfont.setSize(actual_font_size);
+    sk_sp<SkTypeface> typeface = SkTypeface::MakeFromName(actual_family, SkFontStyle::Normal());
+    if (!typeface) {
+        typeface = SkTypeface::MakeDefault();
+    }
+    
+    SkFont skfont(typeface, actual_font_size);
     
     c->sk_canvas->drawString(text, x, y, skfont, sk);
 }
