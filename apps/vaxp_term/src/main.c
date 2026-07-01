@@ -94,5 +94,13 @@ int main(int argc, char** argv) {
         .build = build_ui
     );
     
+    pthread_mutex_lock(&g_mutex);
+    g_terminal = NULL;
+    pthread_mutex_unlock(&g_mutex);
+    
+    if (g_pty_fd >= 0) {
+        close(g_pty_fd);
+    }
+    
     return ret;
 }

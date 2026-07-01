@@ -149,6 +149,14 @@ void vaxp_terminal_init_grid(VaxpTerminal* term, int cols, int rows) {
         term->ring_buffer[i].bg = term->default_bg;
         term->ring_buffer[i].flags = 0;
     }
+    
+    for (int i = 0; i < MAX_TERM_COLS * MAX_TERM_ROWS; i++) {
+        term->alt_buffer[i].ch[0] = ' ';
+        term->alt_buffer[i].ch[1] = '\0';
+        term->alt_buffer[i].fg = term->default_fg;
+        term->alt_buffer[i].bg = term->default_bg;
+        term->alt_buffer[i].flags = 0;
+    }
 }
 
 static TermCell* get_cell(VaxpTerminal* term, int x, int y) {
@@ -901,6 +909,14 @@ static void term_draw(VaxpWidget* self, VaxpCanvas* canvas) {
                         cell->flags = 0;
                     }
                 }
+                for (int y = 0; y < MAX_TERM_ROWS; y++) {
+                    for (int x = term->cols; x < new_cols; x++) {
+                        TermCell* cell = &term->alt_buffer[y * MAX_TERM_COLS + x];
+                        cell->ch[0] = ' '; cell->ch[1] = '\0';
+                        cell->fg = term->default_fg; cell->bg = term->default_bg;
+                        cell->flags = 0;
+                    }
+                }
             }
             
             if (term->cursor_y >= new_rows) {
@@ -949,17 +965,19 @@ static void term_draw(VaxpWidget* self, VaxpCanvas* canvas) {
             }
         }
         
+        VaxpCanvasTextCell row_cells[MAX_TERM_COLS];
         for (int x = 0; x < term->cols; x++) {
             TermCell* cell = get_cell(term, x, y);
-            if (!cell) continue;
+            if (!cell) {
+                row_cells[x].ch[0] = '\0';
+                continue;
+            }
             
             float cx = x * cell_w;
             float cy = y * cell_h;
             
-            VaxpColor c_fg = cell->fg;
             VaxpColor c_bg = cell->bg;
             if (cell->flags & VAXP_TERM_ATTR_INVERSE) {
-                c_fg = cell->bg;
                 c_bg = cell->fg;
             }
             
@@ -967,7 +985,6 @@ static void term_draw(VaxpWidget* self, VaxpCanvas* canvas) {
                 c_bg = vaxp_color_rgba(50, 100, 200, 255);
             } else if (match_mask[x]) {
                 c_bg = vaxp_color_rgba(255, 255, 0, 255);
-                c_fg = vaxp_color_rgba(0, 0, 0, 255);
             }
             
             if (c_bg.r != term->default_bg.r || c_bg.g != term->default_bg.g || 
@@ -976,18 +993,15 @@ static void term_draw(VaxpWidget* self, VaxpCanvas* canvas) {
                 vaxp_canvas_draw_rect(canvas, (VaxpRectF){cx, cy, cell_w, cell_h}, &bg_paint);
             }
             
-            if (cell->ch[0] != ' ' && cell->ch[0] != '\0') {
-                VaxpPaint text_paint = vaxp_paint_fill(c_fg);
-                VaxpBool bold = (cell->flags & VAXP_TERM_ATTR_BOLD) ? VAXP_TRUE : VAXP_FALSE;
-                VaxpBool italic = (cell->flags & VAXP_TERM_ATTR_ITALIC) ? VAXP_TRUE : VAXP_FALSE;
-                VaxpFont font = {.family = "monospace", .size = term->font_size, .bold = bold, .italic = italic};
-                vaxp_canvas_draw_text(canvas, cell->ch, cx, cy + cell_h - 4, &font, &text_paint);
-                
-                if (cell->flags & VAXP_TERM_ATTR_UNDERLINE) {
-                    vaxp_canvas_draw_rect(canvas, (VaxpRectF){cx, cy + cell_h - 2, cell_w, 1}, &text_paint);
-                }
-            }
+            memcpy(row_cells[x].ch, cell->ch, 5);
+            row_cells[x].ch[4] = '\0'; /* Ensure null termination just in case */
+            row_cells[x].fg = cell->fg;
+            row_cells[x].bg = cell->bg;
+            row_cells[x].flags = cell->flags;
         }
+        
+        VaxpFont font = {.family = "monospace", .size = term->font_size, .bold = VAXP_FALSE, .italic = VAXP_FALSE};
+        vaxp_canvas_draw_terminal_cells(canvas, row_cells, term->cols, 0, y * cell_h, cell_w, cell_h, &font, term->default_bg, match_mask);
     }
     /* Draw images */
     for (TermImage* img = term->images; img != NULL; img = img->next) {

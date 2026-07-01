@@ -29,6 +29,17 @@ typedef struct VaxpFont {
     VaxpBool italic;
 } VaxpFont;
 
+/* 
+ * Terminal Cell for GPU batching
+ * Used by vaxp_canvas_draw_terminal_cells
+ */
+typedef struct VaxpCanvasTextCell {
+    char ch[5];        /* UTF-8 string, up to 4 bytes + null */
+    VaxpColor fg;
+    VaxpColor bg;
+    uint8_t flags;     /* Bold=1, Italic=2, Underline=4, Inverse=8 */
+} VaxpCanvasTextCell;
+
 /* ============================================================================
  * PAINT - Describes how to draw
  * ============================================================================ */
@@ -138,8 +149,12 @@ typedef struct VaxpCanvasOps {
     void (*draw_path)(VaxpCanvas* canvas, const VaxpPath* path, const VaxpPaint* paint);
     
     /* Text */
-    void (*draw_text)(VaxpCanvas* canvas, const char* text, VaxpF32 x, VaxpF32 y, 
-                      const VaxpFont* font, const VaxpPaint* paint);
+    void (*draw_text)(VaxpCanvas* canvas, const char* text, VaxpF32 x, VaxpF32 y, const VaxpFont* font, const VaxpPaint* paint);
+    
+    /* Terminal GPU Batching */
+    void (*draw_terminal_cells)(VaxpCanvas* canvas, const VaxpCanvasTextCell* cells, int count, 
+                                VaxpF32 start_x, VaxpF32 y, VaxpF32 cell_w, VaxpF32 cell_h, 
+                                const VaxpFont* font, VaxpColor default_bg, const char* match_mask);
     
     /* Images */
     void (*draw_image)(VaxpCanvas* canvas, const VaxpImage* image, VaxpF32 x, VaxpF32 y);
@@ -229,6 +244,14 @@ VAXP_INLINE void vaxp_canvas_draw_text(VaxpCanvas* canvas, const char* text,
                                           VaxpF32 x, VaxpF32 y, 
                                           const VaxpFont* font, const VaxpPaint* paint) {
     canvas->ops->draw_text(canvas, text, x, y, font, paint);
+}
+
+VAXP_INLINE void vaxp_canvas_draw_terminal_cells(VaxpCanvas* canvas, const VaxpCanvasTextCell* cells, int count, 
+                                                 VaxpF32 start_x, VaxpF32 y, VaxpF32 cell_w, VaxpF32 cell_h, 
+                                                 const VaxpFont* font, VaxpColor default_bg, const char* match_mask) {
+    if (canvas->ops->draw_terminal_cells) {
+        canvas->ops->draw_terminal_cells(canvas, cells, count, start_x, y, cell_w, cell_h, font, default_bg, match_mask);
+    }
 }
 
 VAXP_INLINE void vaxp_canvas_draw_image(VaxpCanvas* canvas, const VaxpImage* image, 
