@@ -9,11 +9,16 @@ extern "C" {
 
 typedef struct VaxpTerminal VaxpTerminal;
 
-/* Represents a single character cell in the terminal */
+#define VAXP_TERM_ATTR_BOLD       1
+#define VAXP_TERM_ATTR_ITALIC     2
+#define VAXP_TERM_ATTR_UNDERLINE  4
+#define VAXP_TERM_ATTR_INVERSE    8
+
 typedef struct {
     char ch[5]; /* UTF-8 char up to 4 bytes + null terminator */
     VaxpColor fg;
     VaxpColor bg;
+    uint8_t flags;
 } TermCell;
 
 struct VaxpTerminal {
@@ -24,7 +29,10 @@ struct VaxpTerminal {
     
     TermCell* ring_buffer;
     int max_rows;       /* Maximum rows in ring buffer (e.g. 1000) */
-    int screen_top_row; /* Index in ring_buffer where the screen starts */
+    int screen_top_row; /* Index in ring_buffer where the screen active area starts */
+    int history_count;  /* How many rows have been scrolled out */
+    
+    int scroll_offset;  /* How far back we have scrolled */
     
     /* Alternate Screen Buffer */
     TermCell* alt_buffer;
@@ -41,39 +49,48 @@ struct VaxpTerminal {
     char utf8_buf[5];
     int utf8_idx;
     
-    /* Colors */
+    /* Colors and Attributes */
     VaxpColor default_fg;
     VaxpColor default_bg;
     VaxpColor current_fg;
     VaxpColor current_bg;
+    uint8_t current_flags;
     
     /* Font size */
     float font_size;
     float char_width;
     float char_height;
     
-    /* PTY master fd to write input */
+    /* PTY master fd */
     int pty_fd;
     
     /* ANSI State Machine */
     int ansi_state;       /* 0=NORMAL, 1=ESC, 2=CSI, 3=OSC */
-    VaxpBool ansi_is_private; /* true if sequence starts with '?' */
+    VaxpBool ansi_is_private;
     int ansi_params[16];
     int ansi_param_count;
-    char ansi_current_param[16];
+    char ansi_current_param[256]; /* Increased for window titles */
     int ansi_param_idx;
+    
+    /* Mouse & Selection */
+    int mouse_reporting_mode; /* 0=off, 1000=normal, 1002=cell motion */
+    VaxpBool is_selecting;
+    int sel_start_x, sel_start_y;
+    int sel_end_x, sel_end_y;
+    
+    VaxpWidget* context_menu;
+    
+    void (*on_title_changed)(void* user_data, const char* title);
+    void* title_user_data;
 };
 
 VaxpResultPtr vaxp_terminal_create(void);
 
 void vaxp_terminal_init_grid(VaxpTerminal* term, int cols, int rows);
-
-/* Write raw data from PTY (handles very basic ANSI parsing) */
 void vaxp_terminal_write(VaxpTerminal* term, const char* data, int len);
 
 extern const VaxpWidgetClass vaxp_terminal_class;
 
-/* Builder Macro */
 #define vaxp_term_widget(...) _vaxp_terminal_build(&(VaxpTerminalConfig){ __VA_ARGS__ })
 
 typedef struct {
@@ -81,6 +98,8 @@ typedef struct {
     int rows;
     float font_size;
     int pty_fd;
+    void (*on_title_changed)(void* user_data, const char* title);
+    void* title_user_data;
 } VaxpTerminalConfig;
 
 VaxpWidget* _vaxp_terminal_build(const VaxpTerminalConfig* config);

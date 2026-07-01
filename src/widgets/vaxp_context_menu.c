@@ -161,9 +161,9 @@ static void context_menu_draw(VaxpWidget* widget, VaxpCanvas* canvas) {
         item = item->next;
     }
     
-    /* Draw border */
-    VaxpPaint border_paint = vaxp_paint_stroke((VaxpColor){ 200, 200, 200, 255 }, 1.0f);
-    vaxp_canvas_draw_rounded_rect(canvas, bg, menu->corner_radius, &border_paint);
+    /* Draw border - GL backend currently doesn't support stroke rects so this covers the text */
+    /* VaxpPaint border_paint = vaxp_paint_stroke((VaxpColor){ 200, 200, 200, 255 }, 1.0f);
+    vaxp_canvas_draw_rounded_rect(canvas, bg, menu->corner_radius, &border_paint); */
 }
 
 static VaxpBool context_menu_on_event(VaxpWidget* widget, const VaxpEvent* event) {

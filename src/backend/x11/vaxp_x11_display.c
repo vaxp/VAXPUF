@@ -6,6 +6,7 @@
 
 #include "vaxp/backend/vaxp_display.h"
 #include "vaxp/backend/vaxp_event.h"
+#include "vaxp/backend/vaxp_clipboard.h"
 #include "vaxp/core/vaxp_memory.h"
 
 #include <X11/Xlib.h>
@@ -151,6 +152,10 @@ static VaxpKeyMod x11_translate_modifiers(unsigned int state) {
 }
 
 static VaxpBool x11_translate_event(VaxpX11Display* d, XEvent* xevent, VaxpEvent* out) {
+    if (vaxp_clipboard_process_event(xevent)) {
+        return VAXP_FALSE;
+    }
+    
     memset(out, 0, sizeof(*out));
     
     switch (xevent->type) {

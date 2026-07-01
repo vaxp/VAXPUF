@@ -624,6 +624,9 @@ int vaxp_run_app(const VaxpAppConfig* config) {
     Window xwindow = (Window)(uintptr_t)win_result.value;
     g_app.xwindow = xwindow;   /* expose to decoration callbacks */
     
+    /* Initialize clipboard */
+    vaxp_clipboard_init(x11->xdisplay, (void*)(uintptr_t)xwindow);
+    
     /* Get actual window size (typed windows may have different size) */
     if (config->window_type != VAXP_WINDOW_NORMAL) {
         /* Wait for window to be mapped and get actual size */
