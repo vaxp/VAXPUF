@@ -549,8 +549,8 @@ int vaxp_run_app(const VaxpAppConfig* config) {
             }
         }
         
-        /* Small sleep (~60fps) */
-        usleep(16000);
+        /* Small sleep (~1000fps or V-Sync) */
+        usleep(1000);
     }
     
     if (config->debug) {

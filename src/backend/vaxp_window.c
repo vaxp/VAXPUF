@@ -543,7 +543,7 @@ int vaxp_run(void) {
             }
         }
         
-        usleep(16000);  /* ~60fps */
+        usleep(1000);  /* Unlocked ~1000fps or V-Sync driven */
     }
     
     g_wm.running = VAXP_FALSE;
