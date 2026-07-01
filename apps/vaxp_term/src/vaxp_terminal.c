@@ -3,6 +3,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+
+#define MAX_TERM_COLS 512
+#define MAX_TERM_ROWS 256
 
 static void term_init(VaxpWidget* self);
 static void term_destroy(VaxpWidget* self);
@@ -60,10 +65,10 @@ void vaxp_terminal_init_grid(VaxpTerminal* term, int cols, int rows) {
     
     term->cols = cols;
     term->rows = rows;
-    term->ring_buffer = malloc(cols * term->max_rows * sizeof(TermCell));
-    term->alt_buffer = malloc(cols * rows * sizeof(TermCell));
+    term->ring_buffer = malloc(MAX_TERM_COLS * term->max_rows * sizeof(TermCell));
+    term->alt_buffer = malloc(MAX_TERM_COLS * MAX_TERM_ROWS * sizeof(TermCell));
     
-    for (int i = 0; i < cols * term->max_rows; i++) {
+    for (int i = 0; i < MAX_TERM_COLS * term->max_rows; i++) {
         term->ring_buffer[i].ch[0] = ' ';
         term->ring_buffer[i].ch[1] = '\0';
         term->ring_buffer[i].fg = term->default_fg;
@@ -74,17 +79,17 @@ void vaxp_terminal_init_grid(VaxpTerminal* term, int cols, int rows) {
 static TermCell* get_cell(VaxpTerminal* term, int x, int y) {
     if (x < 0 || x >= term->cols || y < 0 || y >= term->rows) return NULL;
     if (term->use_alt_buffer && term->alt_buffer) {
-        return &term->alt_buffer[y * term->cols + x];
+        return &term->alt_buffer[y * MAX_TERM_COLS + x];
     }
     int ring_y = (term->screen_top_row + y) % term->max_rows;
-    return &term->ring_buffer[ring_y * term->cols + x];
+    return &term->ring_buffer[ring_y * MAX_TERM_COLS + x];
 }
 
 static void term_scroll_up(VaxpTerminal* term) {
     if (term->use_alt_buffer && term->alt_buffer) {
-        int row_bytes = term->cols * sizeof(TermCell);
-        memmove(term->alt_buffer, term->alt_buffer + term->cols, row_bytes * (term->rows - 1));
-        TermCell* last_row = term->alt_buffer + (term->rows - 1) * term->cols;
+        int row_bytes = MAX_TERM_COLS * sizeof(TermCell);
+        memmove(term->alt_buffer, term->alt_buffer + MAX_TERM_COLS, row_bytes * (term->rows - 1));
+        TermCell* last_row = term->alt_buffer + (term->rows - 1) * MAX_TERM_COLS;
         for (int i = 0; i < term->cols; i++) {
             last_row[i].ch[0] = ' ';
             last_row[i].ch[1] = '\0';
@@ -101,7 +106,7 @@ static void term_scroll_up(VaxpTerminal* term) {
     /* Clear new bottom line */
     int bottom_y = (term->screen_top_row + term->rows - 1) % term->max_rows;
     for (int x = 0; x < term->cols; x++) {
-        TermCell* cell = &term->ring_buffer[bottom_y * term->cols + x];
+        TermCell* cell = &term->ring_buffer[bottom_y * MAX_TERM_COLS + x];
         cell->ch[0] = ' ';
         cell->ch[1] = '\0';
         cell->fg = term->default_fg;
@@ -201,11 +206,6 @@ static void process_sgr(VaxpTerminal* term) {
                 term->current_fg = vaxp_color_rgb(term->ansi_params[i+2], term->ansi_params[i+3], term->ansi_params[i+4]);
                 i += 4;
             } else if (i + 2 < term->ansi_param_count && term->ansi_params[i+1] == 5) {
-                /* 256 color mapping simplified to RGB equivalent, skipping full lookup for brevity */
-                int idx = term->ansi_params[i+2];
-                if (idx < 16) {
-                    /* fallback to basic */
-                }
                 i += 2;
             }
         } else if (p == 39) {
@@ -398,6 +398,26 @@ static void term_draw(VaxpWidget* self, VaxpCanvas* canvas) {
     float cell_w = term->font_size * 0.65f;
     term->char_width = cell_w;
     term->char_height = cell_h;
+    
+    /* Handle Dynamic Resize */
+    int new_cols = (int)(b.width / cell_w);
+    int new_rows = (int)(b.height / cell_h);
+    if (new_cols > 0 && new_rows > 0 && new_cols <= MAX_TERM_COLS && new_rows <= MAX_TERM_ROWS) {
+        if (new_cols != term->cols || new_rows != term->rows) {
+            term->cols = new_cols;
+            term->rows = new_rows;
+            if (term->cursor_x >= term->cols) term->cursor_x = term->cols - 1;
+            if (term->cursor_y >= term->rows) term->cursor_y = term->rows - 1;
+            if (term->pty_fd >= 0) {
+                struct winsize ws;
+                ws.ws_col = term->cols;
+                ws.ws_row = term->rows;
+                ws.ws_xpixel = 0;
+                ws.ws_ypixel = 0;
+                ioctl(term->pty_fd, TIOCSWINSZ, &ws);
+            }
+        }
+    }
     
     for (int y = 0; y < term->rows; y++) {
         for (int x = 0; x < term->cols; x++) {
