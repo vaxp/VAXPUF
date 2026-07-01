@@ -71,6 +71,7 @@ struct VaxpTerminal {
     int ansi_param_count;
     char ansi_current_param[256]; /* Increased for window titles */
     int ansi_param_idx;
+    VaxpBool use_acs;
     
     /* Mouse & Selection */
     int mouse_reporting_mode; /* 0=off, 1000=normal, 1002=cell motion */

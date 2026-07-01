@@ -143,6 +143,47 @@ static void term_scroll_up(VaxpTerminal* term) {
     }
 }
 
+static void term_scroll_down(VaxpTerminal* term) {
+    if (term->use_alt_buffer && term->alt_buffer) {
+        int row_bytes = MAX_TERM_COLS * sizeof(TermCell);
+        memmove(term->alt_buffer + MAX_TERM_COLS, term->alt_buffer, row_bytes * (term->rows - 1));
+        TermCell* first_row = term->alt_buffer;
+        for (int i = 0; i < term->cols; i++) {
+            first_row[i].ch[0] = ' ';
+            first_row[i].ch[1] = '\0';
+            first_row[i].fg = term->default_fg;
+            first_row[i].bg = term->default_bg;
+            first_row[i].flags = 0;
+        }
+        return;
+    }
+    
+    if (!term->ring_buffer) return;
+    
+    term->screen_top_row = (term->screen_top_row - 1 + term->max_rows) % term->max_rows;
+    if (term->history_count > 0) {
+        term->history_count--;
+    }
+    
+    if (term->scroll_offset > 0) {
+        term->scroll_offset--;
+    }
+    
+    if (term->sel_start_y >= 0) term->sel_start_y++;
+    if (term->sel_end_y >= 0) term->sel_end_y++;
+    
+    /* Clear new top line */
+    int top_y = term->screen_top_row;
+    for (int x = 0; x < term->cols; x++) {
+        TermCell* cell = &term->ring_buffer[top_y * MAX_TERM_COLS + x];
+        cell->ch[0] = ' ';
+        cell->ch[1] = '\0';
+        cell->fg = term->default_fg;
+        cell->bg = term->default_bg;
+        cell->flags = 0;
+    }
+}
+
 static void term_put_utf8(VaxpTerminal* term, const char* str) {
     if (term->cursor_x >= term->cols) {
         term->cursor_x = 0;
@@ -155,7 +196,27 @@ static void term_put_utf8(VaxpTerminal* term, const char* str) {
     
     TermCell* cell = get_cell(term, term->cursor_x, term->cursor_y);
     if (cell) {
-        strncpy(cell->ch, str, 4);
+        if (term->use_acs && str[1] == '\0' && str[0] >= 96 && str[0] <= 126) {
+            const char* utf8 = " ";
+            switch(str[0]) {
+                case 'x': utf8 = "\xE2\x94\x82"; break; /* │ */
+                case 'q': utf8 = "\xE2\x94\x80"; break; /* ─ */
+                case 'l': utf8 = "\xE2\x94\x8C"; break; /* ┌ */
+                case 'm': utf8 = "\xE2\x94\x94"; break; /* └ */
+                case 'k': utf8 = "\xE2\x94\x90"; break; /* ┐ */
+                case 'j': utf8 = "\xE2\x94\x98"; break; /* ┘ */
+                case 'a': utf8 = "\xE2\x96\x92"; break; /* ▒ */
+                case 't': utf8 = "\xE2\x94\x9C"; break; /* ├ */
+                case 'u': utf8 = "\xE2\x94\xA4"; break; /* ┤ */
+                case 'v': utf8 = "\xE2\x94\xB4"; break; /* ┴ */
+                case 'w': utf8 = "\xE2\x94\xAC"; break; /* ┬ */
+                case 'n': utf8 = "\xE2\x95\xBC"; break; /* ┼ */
+                default: utf8 = str; break;
+            }
+            strncpy(cell->ch, utf8, 4);
+        } else {
+            strncpy(cell->ch, str, 4);
+        }
         cell->ch[4] = '\0';
         cell->fg = term->current_fg;
         cell->bg = term->current_bg;
@@ -179,6 +240,10 @@ static void term_putc(VaxpTerminal* term, char c) {
         if (term->cursor_x > 0) {
             term->cursor_x--;
         }
+        return;
+    } else if (c == '\t') {
+        term->cursor_x = (term->cursor_x + 8) & ~7;
+        if (term->cursor_x >= term->cols) term->cursor_x = term->cols - 1;
         return;
     }
     
@@ -300,9 +365,42 @@ void vaxp_terminal_write(VaxpTerminal* term, const char* data, int len) {
                 term->ansi_state = 3; /* OSC */
                 term->ansi_param_idx = 0;
                 term->ansi_current_param[0] = '\0';
+            } else if (c == '(' || c == ')') {
+                term->ansi_state = 4; /* Charset */
+            } else if (c == '7') {
+                term->saved_cursor_x = term->cursor_x;
+                term->saved_cursor_y = term->cursor_y;
+                term->ansi_state = 0;
+            } else if (c == '8') {
+                term->cursor_x = term->saved_cursor_x;
+                term->cursor_y = term->saved_cursor_y;
+                term->ansi_state = 0;
+            } else if (c == 'D') {
+                term->cursor_y++;
+                if (term->cursor_y >= term->rows) {
+                    term_scroll_up(term);
+                    term->cursor_y = term->rows - 1;
+                }
+                term->ansi_state = 0;
+            } else if (c == 'M') {
+                term->cursor_y--;
+                if (term->cursor_y < 0) {
+                    term_scroll_down(term);
+                    term->cursor_y = 0;
+                }
+                term->ansi_state = 0;
+            } else if (c == 'Z') {
+                if (term->pty_fd >= 0) {
+                    (void)write(term->pty_fd, "\x1b[?1;2c", 7);
+                }
+                term->ansi_state = 0;
             } else {
                 term->ansi_state = 0;
             }
+        } else if (term->ansi_state == 4) { /* Charset */
+            if (c == '0') term->use_acs = VAXP_TRUE;
+            else if (c == 'B') term->use_acs = VAXP_FALSE;
+            term->ansi_state = 0;
         } else if (term->ansi_state == 2) { /* CSI */
             if (c == '?') {
                 term->ansi_is_private = VAXP_TRUE;
@@ -431,6 +529,91 @@ void vaxp_terminal_write(VaxpTerminal* term, const char* data, int len) {
                     int n = term->ansi_param_count > 0 ? term->ansi_params[0] : 1;
                     term->cursor_x -= n;
                     if (term->cursor_x < 0) term->cursor_x = 0;
+                } else if (c == 'G' || c == '`') {
+                    int col = term->ansi_param_count > 0 ? term->ansi_params[0] : 1;
+                    term->cursor_x = (col > 0 ? col - 1 : 0);
+                    if (term->cursor_x >= term->cols) term->cursor_x = term->cols - 1;
+                } else if (c == 'd') {
+                    int row = term->ansi_param_count > 0 ? term->ansi_params[0] : 1;
+                    term->cursor_y = (row > 0 ? row - 1 : 0);
+                    if (term->cursor_y >= term->rows) term->cursor_y = term->rows - 1;
+                } else if (c == 's') {
+                    term->saved_cursor_x = term->cursor_x;
+                    term->saved_cursor_y = term->cursor_y;
+                } else if (c == 'u') {
+                    term->cursor_x = term->saved_cursor_x;
+                    term->cursor_y = term->saved_cursor_y;
+                } else if (c == 'P') {
+                    int n = term->ansi_param_count > 0 ? term->ansi_params[0] : 1;
+                    for (int x = term->cursor_x; x < term->cols - n; x++) {
+                        TermCell* dst = get_cell(term, x, term->cursor_y);
+                        TermCell* src = get_cell(term, x + n, term->cursor_y);
+                        if (dst && src) *dst = *src;
+                    }
+                    for (int x = term->cols - n; x < term->cols; x++) {
+                        TermCell* cell = get_cell(term, x, term->cursor_y);
+                        if (cell) {
+                            cell->ch[0] = ' '; cell->ch[1] = '\0';
+                            cell->fg = term->default_fg; cell->bg = term->default_bg;
+                            cell->flags = 0;
+                        }
+                    }
+                } else if (c == 'L') {
+                    int n = term->ansi_param_count > 0 ? term->ansi_params[0] : 1;
+                    for (int y = term->rows - 1; y >= term->cursor_y + n; y--) {
+                        for (int x = 0; x < term->cols; x++) {
+                            TermCell* dst = get_cell(term, x, y);
+                            TermCell* src = get_cell(term, x, y - n);
+                            if (dst && src) *dst = *src;
+                        }
+                    }
+                    for (int y = term->cursor_y; y < term->cursor_y + n && y < term->rows; y++) {
+                        for (int x = 0; x < term->cols; x++) {
+                            TermCell* cell = get_cell(term, x, y);
+                            if (cell) {
+                                cell->ch[0] = ' '; cell->ch[1] = '\0';
+                                cell->fg = term->default_fg; cell->bg = term->default_bg;
+                                cell->flags = 0;
+                            }
+                        }
+                    }
+                } else if (c == 'M') {
+                    int n = term->ansi_param_count > 0 ? term->ansi_params[0] : 1;
+                    for (int y = term->cursor_y; y < term->rows - n; y++) {
+                        for (int x = 0; x < term->cols; x++) {
+                            TermCell* dst = get_cell(term, x, y);
+                            TermCell* src = get_cell(term, x, y + n);
+                            if (dst && src) *dst = *src;
+                        }
+                    }
+                    for (int y = term->rows - n; y < term->rows; y++) {
+                        for (int x = 0; x < term->cols; x++) {
+                            TermCell* cell = get_cell(term, x, y);
+                            if (cell) {
+                                cell->ch[0] = ' '; cell->ch[1] = '\0';
+                                cell->fg = term->default_fg; cell->bg = term->default_bg;
+                                cell->flags = 0;
+                            }
+                        }
+                    }
+                } else if (c == 'c') {
+                    if (term->pty_fd >= 0) {
+                        /* Primary DA (Device Attributes) response: VT100 with Advanced Video Option */
+                        (void)write(term->pty_fd, "\x1b[?1;2c", 7);
+                    }
+                } else if (c == 'n') {
+                    if (term->pty_fd >= 0) {
+                        int p = term->ansi_param_count > 0 ? term->ansi_params[0] : 0;
+                        if (p == 5) {
+                            /* DSR: Operating Status -> OK */
+                            (void)write(term->pty_fd, "\x1b[0n", 4);
+                        } else if (p == 6) {
+                            /* CPR: Cursor Position Report */
+                            char buf[32];
+                            snprintf(buf, sizeof(buf), "\x1b[%d;%dR", term->cursor_y + 1, term->cursor_x + 1);
+                            (void)write(term->pty_fd, buf, strlen(buf));
+                        }
+                    }
                 }
                 
                 term->ansi_state = 0;
@@ -774,6 +957,74 @@ static VaxpBool term_on_event(VaxpWidget* self, const VaxpEvent* event) {
             (void)write(term->pty_fd, "\x1b", 1);
             term->sel_start_y = -1; vaxp_widget_invalidate(self);
             return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_TAB) {
+            (void)write(term->pty_fd, "\t", 1);
+            term->sel_start_y = -1; vaxp_widget_invalidate(self);
+            return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_UP) {
+            (void)write(term->pty_fd, "\x1b[A", 3);
+            term->sel_start_y = -1; vaxp_widget_invalidate(self);
+            return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_DOWN) {
+            (void)write(term->pty_fd, "\x1b[B", 3);
+            term->sel_start_y = -1; vaxp_widget_invalidate(self);
+            return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_RIGHT) {
+            (void)write(term->pty_fd, "\x1b[C", 3);
+            term->sel_start_y = -1; vaxp_widget_invalidate(self);
+            return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_LEFT) {
+            (void)write(term->pty_fd, "\x1b[D", 3);
+            term->sel_start_y = -1; vaxp_widget_invalidate(self);
+            return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_HOME) {
+            (void)write(term->pty_fd, "\x1b[H", 3);
+            term->sel_start_y = -1; vaxp_widget_invalidate(self);
+            return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_END) {
+            (void)write(term->pty_fd, "\x1b[F", 3);
+            term->sel_start_y = -1; vaxp_widget_invalidate(self);
+            return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_PAGE_UP) {
+            (void)write(term->pty_fd, "\x1b[5~", 4);
+            term->sel_start_y = -1; vaxp_widget_invalidate(self);
+            return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_PAGE_DOWN) {
+            (void)write(term->pty_fd, "\x1b[6~", 4);
+            term->sel_start_y = -1; vaxp_widget_invalidate(self);
+            return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_INSERT) {
+            (void)write(term->pty_fd, "\x1b[2~", 4);
+            term->sel_start_y = -1; vaxp_widget_invalidate(self);
+            return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_DELETE) {
+            (void)write(term->pty_fd, "\x1b[3~", 4);
+            term->sel_start_y = -1; vaxp_widget_invalidate(self);
+            return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_F1) {
+            (void)write(term->pty_fd, "\x1bOP", 3); term->sel_start_y = -1; vaxp_widget_invalidate(self); return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_F2) {
+            (void)write(term->pty_fd, "\x1bOQ", 3); term->sel_start_y = -1; vaxp_widget_invalidate(self); return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_F3) {
+            (void)write(term->pty_fd, "\x1bOR", 3); term->sel_start_y = -1; vaxp_widget_invalidate(self); return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_F4) {
+            (void)write(term->pty_fd, "\x1bOS", 3); term->sel_start_y = -1; vaxp_widget_invalidate(self); return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_F5) {
+            (void)write(term->pty_fd, "\x1b[15~", 5); term->sel_start_y = -1; vaxp_widget_invalidate(self); return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_F6) {
+            (void)write(term->pty_fd, "\x1b[17~", 5); term->sel_start_y = -1; vaxp_widget_invalidate(self); return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_F7) {
+            (void)write(term->pty_fd, "\x1b[18~", 5); term->sel_start_y = -1; vaxp_widget_invalidate(self); return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_F8) {
+            (void)write(term->pty_fd, "\x1b[19~", 5); term->sel_start_y = -1; vaxp_widget_invalidate(self); return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_F9) {
+            (void)write(term->pty_fd, "\x1b[20~", 5); term->sel_start_y = -1; vaxp_widget_invalidate(self); return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_F10) {
+            (void)write(term->pty_fd, "\x1b[21~", 5); term->sel_start_y = -1; vaxp_widget_invalidate(self); return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_F11) {
+            (void)write(term->pty_fd, "\x1b[23~", 5); term->sel_start_y = -1; vaxp_widget_invalidate(self); return VAXP_TRUE;
+        } else if (event->key.key == VAXP_KEY_F12) {
+            (void)write(term->pty_fd, "\x1b[24~", 5); term->sel_start_y = -1; vaxp_widget_invalidate(self); return VAXP_TRUE;
         } else {
             if (event->text.text[0] != '\0' && (unsigned char)event->text.text[0] >= 32) {
                 (void)write(term->pty_fd, event->text.text, strlen(event->text.text));
