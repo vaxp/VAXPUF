@@ -1057,6 +1057,25 @@ VaxpFontId vaxp_text_engine_load_font_by_name(VaxpTextEngine* engine,
         fprintf(stderr, "[TE] Could not find font for family: %s\n", family ? family : "(null)");
         return VAXP_FONT_INVALID;
     }
+    
+    /* Ensure we have some fallbacks loaded for this size */
+    bool fallbacks_loaded = false;
+    for (int i = 0; i < engine->font_count; i++) {
+        if (engine->fonts[i].in_use && fabsf(engine->fonts[i].size_px - size_px) < 0.5f) {
+            if (strstr(engine->fonts[i].path, "CascadiaMonoPL.ttf") || 
+                strstr(engine->fonts[i].path, "NotoSansSymbols2")) {
+                fallbacks_loaded = true;
+                break;
+            }
+        }
+    }
+    if (!fallbacks_loaded) {
+        vaxp_text_engine_load_font(engine, "/usr/share/fonts/CascadiaCode/CascadiaMonoPL.ttf", size_px);
+        vaxp_text_engine_load_font(engine, "/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf", size_px);
+        vaxp_text_engine_load_font(engine, "/usr/share/fonts/truetype/noto/NotoNaskhArabic-Regular.ttf", size_px);
+        vaxp_text_engine_load_font(engine, "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf", size_px);
+    }
+
     return vaxp_text_engine_load_font(engine, path, size_px);
 }
 
@@ -1139,6 +1158,24 @@ void vaxp_text_engine_draw_cells(VaxpTextEngine* engine,
         ShapedGlyph shaped[8];
         int n = te_shape_run(engine, fid, cell->ch, (int)strlen(cell->ch),
                               false, shaped, 8);
+
+        /* FALLBACK LOGIC for missing glyphs */
+        if (n > 0 && shaped[0].codepoint == 0) {
+            VaxpFontId fallback_fid = fid;
+            for (int f = 0; f < engine->font_count; f++) {
+                if (engine->fonts[f].in_use && f != fid && fabsf(engine->fonts[f].size_px - size_px) < 0.5f) {
+                    if (FT_Get_Char_Index(engine->fonts[f].ft_face, cp) > 0) {
+                        fallback_fid = f;
+                        break;
+                    }
+                }
+            }
+            if (fallback_fid != fid) {
+                fid = fallback_fid;
+                n = te_shape_run(engine, fid, cell->ch, (int)strlen(cell->ch),
+                                 false, shaped, 8);
+            }
+        }
 
         float cx = start_x + i * cell_w;
         float baseline = y + baseline_off;
