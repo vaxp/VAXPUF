@@ -535,6 +535,23 @@ int vaxp_run_app(const VaxpAppConfig* config) {
                     }
                     break;
                     
+                case VAXP_EVENT_WINDOW_RESIZE:
+                    if (g_app.window_width != event.window.width || g_app.window_height != event.window.height) {
+                        g_app.window_width = event.window.width;
+                        g_app.window_height = event.window.height;
+                        bounds.width = (VaxpF32)event.window.width;
+                        bounds.height = (VaxpF32)event.window.height;
+                        if (g_app.canvas) {
+                            g_app.canvas->width = event.window.width;
+                            g_app.canvas->height = event.window.height;
+                        }
+                        if (g_app.root) {
+                            vaxp_widget_layout(g_app.root, bounds);
+                        }
+                        needs_redraw = VAXP_TRUE;
+                    }
+                    break;
+                    
                 case VAXP_EVENT_WINDOW_EXPOSE:
                     needs_redraw = VAXP_TRUE;
                     break;

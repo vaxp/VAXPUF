@@ -520,6 +520,22 @@ int vaxp_run(void) {
                     }
                     break;
                     
+                case VAXP_EVENT_WINDOW_RESIZE:
+                    if (target->width != event.window.width || target->height != event.window.height) {
+                        target->width = event.window.width;
+                        target->height = event.window.height;
+                        if (target->canvas) {
+                            target->canvas->width = event.window.width;
+                            target->canvas->height = event.window.height;
+                        }
+                        if (target->root) {
+                            VaxpRectF bounds = {0, 0, (VaxpF32)event.window.width, (VaxpF32)event.window.height};
+                            vaxp_widget_layout(target->root, bounds);
+                        }
+                        target->needs_redraw = VAXP_TRUE;
+                    }
+                    break;
+                    
                 case VAXP_EVENT_WINDOW_EXPOSE:
                     target->needs_redraw = VAXP_TRUE;
                     break;

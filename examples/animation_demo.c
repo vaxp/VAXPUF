@@ -186,6 +186,9 @@ static void canvas_draw(VaxpWidget* widget, VaxpCanvas* canvas) {
     }
     
     /* UPDATE ANIMATIONS */
+    if (s->x_anim) s->x_anim->to_value = widget->bounds.width - 100;
+    if (s->spring) vaxp_spring_animation_set_target(s->spring, widget->bounds.width - 120);
+
     if (!s->paused) {
         if (s->x_anim && vaxp_animation_is_running(s->x_anim)) {
             vaxp_animation_update(s->x_anim, dt);
@@ -279,7 +282,10 @@ static const VaxpWidgetClass anim_canvas_class = {
 
 static VaxpWidget* anim_canvas_new(void) {
     VaxpResultPtr r = vaxp_widget_create(&anim_canvas_class);
-    return r.ok ? (VaxpWidget*)r.value : NULL;
+    if (!r.ok) return NULL;
+    VaxpWidget* w = (VaxpWidget*)r.value;
+    w->layout.flex_grow = 1;
+    return w;
 }
 
 /* ============================================================================
@@ -300,6 +306,7 @@ static VaxpWidget* build_ui(void* ud) {
     return vaxp_col(
         .padding = (VaxpInsets){14,14,14,14},
         .gap = 10,
+        .align = VAXP_ALIGN_STRETCH,
         .background = vaxp_color_rgb(35, 38, 48),
         .children = (VaxpWidget*[]){
             vaxp_text("🎬 VAXPUI Animation Demo", 

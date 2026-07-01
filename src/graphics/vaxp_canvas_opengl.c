@@ -784,6 +784,7 @@ static void gl_canvas_clear(VaxpCanvas* canvas, VaxpColor color) {
     mat4_identity(c->model_matrix);
     mat4_identity(c->projection_matrix);
     mat4_ortho(c->projection_matrix, 0.0f, canvas->width, canvas->height, 0.0f, -1.0f, 1.0f);
+    glViewport(0, 0, canvas->width, canvas->height);
     
     glClearColor(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
