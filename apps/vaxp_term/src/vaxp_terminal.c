@@ -40,7 +40,7 @@ static void term_init(VaxpWidget* self) {
     term->saved_cursor_y = 0;
     term->cursor_visible = VAXP_TRUE;
     term->default_fg = vaxp_color_rgb(220, 220, 220);
-    term->default_bg = vaxp_color_rgb(30, 30, 30);
+    term->default_bg = vaxp_color_rgba(0, 0, 0, 100);
     term->current_fg = term->default_fg;
     term->current_bg = term->default_bg;
     term->font_size = 14.0f;
