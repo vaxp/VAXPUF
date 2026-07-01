@@ -77,7 +77,7 @@ sudo apt install meson ninja-build libx11-dev libcairo2-dev libpango1.0-dev libp
 # Build
 meson setup build
 meson compile -C build
-
+meson configure build -Dopengl=true && ninja -C build
 # Run example
 ./build/examples/hello_world
 ```

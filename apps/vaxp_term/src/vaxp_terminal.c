@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <termios.h>
+#include <sys/time.h>
 #include "vaxp/widgets/vaxp_context_menu.h"
 #include "vaxp/widgets/vaxp_image.h"
 
@@ -1033,6 +1034,34 @@ static void term_draw(VaxpWidget* self, VaxpCanvas* canvas) {
         VaxpFont font = {.family = "monospace", .size = term->font_size, .bold = VAXP_TRUE};
         VaxpPaint text_paint = vaxp_paint_fill(vaxp_color_rgba(200, 220, 255, 255));
         vaxp_canvas_draw_text(canvas, search_text, 10, b.height - bar_h/2 + term->font_size/2, &font, &text_paint);
+    }
+    
+    /* FPS Counter */
+    static double last_fps_time = 0;
+    static int frames_count = 0;
+    static int current_fps = 0;
+    
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    double now = tv.tv_sec + tv.tv_usec / 1e6;
+    
+    frames_count++;
+    if (now - last_fps_time >= 1.0) {
+        current_fps = frames_count;
+        frames_count = 0;
+        last_fps_time = now;
+    }
+    
+    if (current_fps > 0) {
+        char fps_str[32];
+        snprintf(fps_str, sizeof(fps_str), "FPS: %d", current_fps);
+        VaxpFont font_fps = {.family = "monospace", .size = 14.0f, .bold = VAXP_TRUE};
+        VaxpPaint paint_fps = vaxp_paint_fill(vaxp_color_rgba(0, 255, 0, 255));
+        
+        /* Draw a small background for visibility */
+        VaxpPaint fps_bg = vaxp_paint_fill(vaxp_color_rgba(0, 0, 0, 150));
+        vaxp_canvas_draw_rect(canvas, (VaxpRectF){b.width - 80, 5, 75, 20}, &fps_bg);
+        vaxp_canvas_draw_text(canvas, fps_str, b.width - 75, 20, &font_fps, &paint_fps);
     }
     
     if (term->context_menu && ((VaxpContextMenu*)term->context_menu)->is_open) {

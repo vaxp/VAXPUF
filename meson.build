@@ -30,7 +30,12 @@ skia_dep = dependency('skia', required: false)
 # Fallback to Cairo if Skia not available
 cairo_dep = dependency('cairo', required: false)
 
-# PangoCairo for proper international text rendering (Arabic, CJK, etc.)
+# NEW: FreeType + HarfBuzz + FriBidi for hardware-accelerated text (replaces Pango)
+freetype_dep = dependency('freetype2', required: true)
+harfbuzz_dep = dependency('harfbuzz',  required: true)
+fribidi_dep  = dependency('fribidi',   required: true)
+
+# PangoCairo kept only for Cairo canvas fallback (not OpenGL)
 pangocairo_dep = dependency('pangocairo', required: false)
 
 # Check for valid backend
@@ -161,13 +166,14 @@ state_sources = files(
 
 # Graphics sources depend on available backend
 if enable_opengl
-    # OpenGL mode: use OpenGL canvas but also keep Cairo for image widgets
+    # OpenGL mode: FreeType+HarfBuzz text engine, no Pango dependency
     graphics_sources = files(
         'src/graphics/vaxp_canvas_opengl.c',
-        'src/graphics/vaxp_canvas_cairo.c'  # Still needed for app integration
+        'src/graphics/vaxp_text_engine.c',
+        'src/graphics/vaxp_canvas_cairo.c'  # Still needed for Cairo widgets
     )
     graphics_dep = gl_dep
-    graphics_extra_deps = [cairo_dep, pangocairo_dep]
+    graphics_extra_deps = [freetype_dep, harfbuzz_dep, fribidi_dep, cairo_dep, pangocairo_dep]
 elif skia_dep.found()
     graphics_sources = files('src/graphics/vaxp_canvas_skia.cpp')
     graphics_dep = skia_dep

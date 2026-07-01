@@ -7,5 +7,5 @@ option('tests', type: 'boolean', value: true,
 option('debug_memory', type: 'boolean', value: true,
     description: 'Enable memory tracking and leak detection')
 
-option('opengl', type: 'boolean', value: false,
+option('opengl', type: 'boolean', value: true,
     description: 'Use OpenGL backend instead of Cairo/Skia')

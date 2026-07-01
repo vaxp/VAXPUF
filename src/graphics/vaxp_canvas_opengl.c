@@ -4,6 +4,7 @@
  * vaxp_canvas_opengl.c - OpenGL 3.3 Core Profile implementation of canvas
  * 
  * Hardware-accelerated 2D/3D rendering with GLSL shaders.
+ * Text rendering: FreeType + HarfBuzz + FriBidi (NO Pango, NO Cairo)
  */
 
 #define _USE_MATH_DEFINES
@@ -16,6 +17,7 @@
 #include "vaxp/graphics/vaxp_canvas.h"
 #include "vaxp/widgets/vaxp_image.h"
 #include "vaxp/core/vaxp_memory.h"
+#include "vaxp_text_engine.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -26,25 +28,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include <cairo/cairo.h>
-#include <pango/pangocairo.h>
-#include <pango/pangocairo.h>
+#include <sys/time.h>
 
-#define GLYPH_ATLAS_SIZE 1024
-#define MAX_GLYPH_CACHE 4096
-
-typedef struct {
-    char ch[5];
-    uint8_t flags; /* Bold, Italic */
-    float size;
-    const char* family;
-    
-    /* UVs in the atlas */
-    float u0, v0, u1, v1;
-    float width, height;
-} GlyphInfo;
-
-/* stb_truetype for font rendering */
+/* stb_truetype kept for non-text font bitmap (not used for text) */
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "vaxp/third_party/stb_truetype.h"
 
@@ -329,7 +315,6 @@ static const char* FRAGMENT_SHADER_TEXT =
 
 
 #define MAX_BATCH_VERTICES 16384
-#define MAX_TEXT_CACHE 256
 
 typedef struct {
     VaxpF32 x, y;
@@ -337,16 +322,6 @@ typedef struct {
     VaxpF32 r, g, b, a;
     VaxpF32 type, radius, width, height;
 } VaxpGLVertex;
-
-typedef struct {
-    char* text;
-    VaxpColor color;
-    GLuint texture;
-    int width;
-    int height;
-    float font_size;
-    char font_family[64];
-} TextCacheEntry;
 
 typedef struct VaxpGLCanvas {
     VaxpCanvas base;
@@ -372,22 +347,21 @@ typedef struct VaxpGLCanvas {
     GLuint cube_vao;
     GLuint cube_vbo;
     
-    /* Font rendering */
+    /* Font rendering (stb - legacy, for compatibility) */
     GLuint font_texture;
-    stbtt_bakedchar font_chars[96];  /* ASCII 32-127 */
+    stbtt_bakedchar font_chars[96];
     int font_loaded;
     float font_size;
     
     /* State stack */
-    float transform_stack[32][16]; /* 4x4 matrices */
+    float transform_stack[32][16];
     VaxpRectF clip_stack[32];
     VaxpRectF current_clip;
     VaxpBool clip_enabled_stack[32];
     VaxpBool clip_enabled;
     int stack_depth;
     
-    
-    /* Batching state */
+    /* Batching state (for non-text geometry) */
     GLuint prog_uber;
     GLuint uber_vao;
     GLuint uber_vbo;
@@ -395,22 +369,15 @@ typedef struct VaxpGLCanvas {
     int batch_count;
     GLuint current_texture;
     
-    /* Text cache */
-    TextCacheEntry text_cache[MAX_TEXT_CACHE];
-    int text_cache_count;
-    int text_cache_head;
-
     /* Current transform */
     float model_matrix[16];
     float projection_matrix[16];
     
-    /* Glyph Atlas (Terminal Batching) */
-    GLuint glyph_atlas_tex;
-    int atlas_cursor_x;
-    int atlas_cursor_y;
-    int atlas_row_height;
-    GlyphInfo glyph_cache[MAX_GLYPH_CACHE];
-    int glyph_cache_count;
+    /* NEW: FreeType + HarfBuzz text engine */
+    VaxpTextEngine* text_engine;
+    VaxpFontId      font_regular;    /* Regular monospace */
+    VaxpFontId      font_bold;       /* Bold monospace */
+    float           term_font_size;  /* Font size for terminal */
     
 } VaxpGLCanvas;
 
@@ -660,11 +627,16 @@ static void gl_canvas_destroy(VaxpCanvas* canvas) {
     if (c->cube_vao) glDeleteVertexArrays(1, &c->cube_vao);
     if (c->cube_vbo) glDeleteBuffers(1, &c->cube_vbo);
     
+    /* Destroy text engine (frees FreeType, HarfBuzz, atlas texture - zero leaks) */
+    vaxp_text_engine_destroy(c->text_engine);
+    c->text_engine = NULL;
+    
     if (c->glx_context) {
         glXMakeCurrent(c->display, None, NULL);
         glXDestroyContext(c->display, c->glx_context);
     }
 }
+
 
 static void gl_canvas_save(VaxpCanvas* canvas) {
     VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
@@ -888,275 +860,76 @@ static void gl_canvas_draw_path(VaxpCanvas* canvas, const VaxpPath* path, const 
 static void gl_canvas_draw_text(VaxpCanvas* canvas, const char* text, VaxpF32 x, VaxpF32 y,
                                  const VaxpFont* font, const VaxpPaint* paint) {
     VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
-    if (!text || !*text) return;
+    if (!text || !*text || !c->text_engine) return;
     
-    float actual_font_size = (font && font->size > 0) ? font->size : c->font_size;
-    if (actual_font_size <= 0) actual_font_size = 14.0f;
-    const char* actual_family = (font && font->family && font->family[0]) ? font->family : "Noto Sans";
+    float size_px = (font && font->size > 0) ? font->size : 14.0f;
+    bool bold = (font && font->bold);
+    const char* family = (font && font->family && font->family[0]) ? font->family : "monospace";
     
-    GLuint tex = 0;
-    int tw = 0, th = 0;
+    /* Ensure font is loaded for this size */
+    VaxpFontId fid = vaxp_text_engine_load_font_by_name(c->text_engine, family, size_px, bold, false);
+    if (fid == VAXP_FONT_INVALID) return;
     
-    /* Search cache */
-    for (int i=0; i<c->text_cache_count; i++) {
-        TextCacheEntry* e = &c->text_cache[i];
-        if (e->color.r == paint->color.r && e->color.g == paint->color.g && 
-            e->color.b == paint->color.b && e->color.a == paint->color.a &&
-            e->font_size == actual_font_size && 
-            strcmp(e->font_family, actual_family) == 0 &&
-            strcmp(e->text, text) == 0) {
-            tex = e->texture;
-            tw = e->width;
-            th = e->height;
-            break;
-        }
-    }
+    /* Flush geometry batch before text engine draws */
+    gl_batch_flush(c);
     
-    if (tex == 0) {
-        cairo_surface_t* temp_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
-        cairo_t* cr = cairo_create(temp_surface);
-        PangoLayout* layout = pango_cairo_create_layout(cr);
-        
-        char font_desc_str[128];
-        snprintf(font_desc_str, sizeof(font_desc_str), "%s %f", actual_family, actual_font_size);
-        PangoFontDescription* desc = pango_font_description_from_string(font_desc_str);
-        pango_layout_set_font_description(layout, desc);
-        pango_font_description_free(desc);
-        
-        pango_layout_set_text(layout, text, -1);
-        pango_layout_get_pixel_size(layout, &tw, &th);
-        
-        cairo_destroy(cr);
-        cairo_surface_destroy(temp_surface);
-        
-        if (tw == 0 || th == 0) {
-            g_object_unref(layout);
-            return;
-        }
-        
-        cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, tw, th);
-        cr = cairo_create(surface);
-        
-        cairo_set_source_rgba(cr, 0, 0, 0, 0);
-        cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-        cairo_paint(cr);
-        
-        cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
-        cairo_set_source_rgba(cr, paint->color.r/255.0f, paint->color.g/255.0f, paint->color.b/255.0f, paint->color.a/255.0f);
-        
-        pango_cairo_update_layout(cr, layout);
-        
-        /* Adjust for baseline like cairo backend */
-        VaxpF32 adjusted_y = th * 0.15f; 
-        cairo_move_to(cr, 0, 0);
-        
-        pango_cairo_show_layout(cr, layout);
-        
-        cairo_surface_flush(surface);
-        unsigned char* data = cairo_image_surface_get_data(surface);
-        
-        /* Generate texture */
-        /* Must flush batch before generating texture because active GL context operations? No, it's fine. */
-        glGenTextures(1, &tex);
-        glBindTexture(GL_TEXTURE_2D, tex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tw, th, 0, GL_BGRA, GL_UNSIGNED_BYTE, data);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        
-        cairo_destroy(cr);
-        cairo_surface_destroy(surface);
-        g_object_unref(layout);
-        
-        /* Add to LRU/Cache */
-        int idx = c->text_cache_count < MAX_TEXT_CACHE ? c->text_cache_count++ : c->text_cache_head;
-        c->text_cache_head = (idx + 1) % MAX_TEXT_CACHE;
-        
-        TextCacheEntry* e = &c->text_cache[idx];
-        if (e->text) free(e->text);
-        
-        e->text = (char*)malloc(strlen(text) + 1);
-        strcpy(e->text, text);
-
-        if (e->texture) glDeleteTextures(1, &e->texture);
-        e->texture = tex;
-        e->width = tw;
-        e->height = th;
-        e->font_size = actual_font_size;
-        strncpy(e->font_family, actual_family, sizeof(e->font_family) - 1);
-        e->font_family[sizeof(e->font_family) - 1] = '\0';
-        e->color = paint->color;
-    }
+    /* Set text engine transform to match canvas */
+    vaxp_text_engine_set_transform(c->text_engine, c->model_matrix);
     
-    /* Adjust drawing Y so it matches Cairo's baseline behavior */
-    VaxpF32 draw_y = y - th * 0.7f;
-    VaxpF32 pts[8] = {x, draw_y, x+tw, draw_y, x+tw, draw_y+th, x, draw_y+th};
-    VaxpF32 uvs[8] = {0,0, 1,0, 1,1, 0,1};
-    gl_batch_push_quad(c, 1.0f, 0.0f, 0.0f, 0.0f, pts, uvs, vaxp_color_rgba(255,255,255,255), tex);
+    VaxpTextColor color = {paint->color.r, paint->color.g, paint->color.b, paint->color.a};
+    vaxp_text_engine_draw_string(c->text_engine, fid, text, x, y, color);
+    vaxp_text_engine_flush(c->text_engine);
 }
 
 /* 
- * Terminal GPU Batching 
- * Renders cells efficiently using a Glyph Atlas texture
+ * Terminal GPU Batching via FreeType+HarfBuzz text engine
  */
 static void gl_canvas_draw_terminal_cells(VaxpCanvas* canvas, const VaxpCanvasTextCell* cells, int count, 
                                           VaxpF32 start_x, VaxpF32 y, VaxpF32 cell_w, VaxpF32 cell_h, 
                                           const VaxpFont* font, VaxpColor default_bg, const char* match_mask) {
     VaxpGLCanvas* c = (VaxpGLCanvas*)canvas;
+    if (!c->text_engine || !cells || count <= 0) return;
     
-    if (c->glyph_atlas_tex == 0) {
-        glGenTextures(1, &c->glyph_atlas_tex);
-        glBindTexture(GL_TEXTURE_2D, c->glyph_atlas_tex);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, GLYPH_ATLAS_SIZE, GLYPH_ATLAS_SIZE, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        
-        c->atlas_cursor_x = 0;
-        c->atlas_cursor_y = 0;
-        c->atlas_row_height = (int)(cell_h * 2.0f); /* Initial row height assumption */
-        c->glyph_cache_count = 0;
+    float size_px = (font && font->size > 0) ? font->size : 14.0f;
+    
+    /* Load fonts if size changed */
+    if (c->font_regular == VAXP_FONT_INVALID || fabsf(c->term_font_size - size_px) > 0.5f) {
+        c->font_regular = vaxp_text_engine_load_font_by_name(c->text_engine, "monospace", size_px, false, false);
+        c->font_bold    = vaxp_text_engine_load_font_by_name(c->text_engine, "monospace", size_px, true,  false);
+        c->term_font_size = size_px;
     }
     
-    const char* actual_family = font->family ? font->family : "monospace";
-    float actual_font_size = font->size > 0 ? font->size : 14.0f;
-    
+    /* Convert VaxpCanvasTextCell → VaxpTextCell */
+    VaxpTextCell* te_cells = (VaxpTextCell*)malloc(count * sizeof(VaxpTextCell));
     for (int i = 0; i < count; i++) {
-        const VaxpCanvasTextCell* cell = &cells[i];
-        
-        if (cell->ch[0] == '\0' || cell->ch[0] == ' ') continue;
-        
-        /* Find in cache */
-        GlyphInfo* glyph = NULL;
-        for (int j = 0; j < c->glyph_cache_count; j++) {
-            GlyphInfo* g = &c->glyph_cache[j];
-            if (g->size == actual_font_size && g->flags == cell->flags && 
-                strcmp(g->ch, cell->ch) == 0 && strcmp(g->family, actual_family) == 0) {
-                glyph = g;
-                break;
-            }
-        }
-        
-        /* If not found, render to atlas */
-        if (!glyph) {
-            if (c->glyph_cache_count >= MAX_GLYPH_CACHE) {
-                /* Atlas full, reset! */
-                c->atlas_cursor_x = 0;
-                c->atlas_cursor_y = 0;
-                c->glyph_cache_count = 0;
-            }
-            
-            cairo_surface_t* temp_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, 1, 1);
-            cairo_t* cr = cairo_create(temp_surface);
-            PangoLayout* layout = pango_cairo_create_layout(cr);
-            
-            char font_desc_str[128];
-            snprintf(font_desc_str, sizeof(font_desc_str), "%s %s %s %f", 
-                     actual_family, 
-                     (cell->flags & 1) ? "Bold" : "", 
-                     (cell->flags & 2) ? "Italic" : "", 
-                     actual_font_size);
-                     
-            PangoFontDescription* desc = pango_font_description_from_string(font_desc_str);
-            pango_layout_set_font_description(layout, desc);
-            pango_font_description_free(desc);
-            
-            pango_layout_set_text(layout, cell->ch, -1);
-            int tw, th;
-            pango_layout_get_pixel_size(layout, &tw, &th);
-            
-            cairo_destroy(cr);
-            cairo_surface_destroy(temp_surface);
-            
-            if (tw > 0 && th > 0) {
-                cairo_surface_t* surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, tw, th);
-                cr = cairo_create(surface);
-                
-                cairo_set_source_rgba(cr, 0, 0, 0, 0);
-                cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-                cairo_paint(cr);
-                
-                cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
-                cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 1.0); /* Render as WHITE */
-                
-                pango_cairo_update_layout(cr, layout);
-                cairo_move_to(cr, 0, 0);
-                pango_cairo_show_layout(cr, layout);
-                
-                cairo_surface_flush(surface);
-                unsigned char* data = cairo_image_surface_get_data(surface);
-                
-                if (c->atlas_cursor_x + tw > GLYPH_ATLAS_SIZE) {
-                    c->atlas_cursor_x = 0;
-                    c->atlas_cursor_y += c->atlas_row_height;
-                }
-                
-                if (th > c->atlas_row_height) {
-                    c->atlas_row_height = th;
-                }
-                
-                if (c->atlas_cursor_y + th > GLYPH_ATLAS_SIZE) {
-                    /* Atlas overflow, reset */
-                    c->atlas_cursor_x = 0;
-                    c->atlas_cursor_y = 0;
-                    c->glyph_cache_count = 0;
-                }
-                
-                /* Flush active batch before mutating texture */
-                gl_batch_flush(c);
-                glBindTexture(GL_TEXTURE_2D, c->glyph_atlas_tex);
-                glTexSubImage2D(GL_TEXTURE_2D, 0, c->atlas_cursor_x, c->atlas_cursor_y, tw, th, GL_BGRA, GL_UNSIGNED_BYTE, data);
-                
-                glyph = &c->glyph_cache[c->glyph_cache_count++];
-                memcpy(glyph->ch, cell->ch, 5);
-                glyph->ch[4] = '\0';
-                glyph->flags = cell->flags;
-                glyph->size = actual_font_size;
-                glyph->family = actual_family;
-                
-                glyph->u0 = (float)c->atlas_cursor_x / GLYPH_ATLAS_SIZE;
-                glyph->v0 = (float)c->atlas_cursor_y / GLYPH_ATLAS_SIZE;
-                glyph->u1 = (float)(c->atlas_cursor_x + tw) / GLYPH_ATLAS_SIZE;
-                glyph->v1 = (float)(c->atlas_cursor_y + th) / GLYPH_ATLAS_SIZE;
-                glyph->width = tw;
-                glyph->height = th;
-                
-                c->atlas_cursor_x += tw + 1; /* 1 pixel padding */
-                
-                cairo_destroy(cr);
-                cairo_surface_destroy(surface);
-            }
-            g_object_unref(layout);
-        }
-        
-        if (glyph) {
-            float cx = start_x + i * cell_w;
-            float cy = y;
-            
-            /* Double-width character detection (e.g. Emoji or CJK) */
-            if (glyph->width > cell_w * 1.5f) {
-                /* If it spans multiple cells, we can optionally skip drawing the next background or just let it overlay */
-            }
-            
-            /* Background handles inverse and search match */
-            VaxpColor c_fg = cell->fg;
-            if (cell->flags & 8) c_fg = cell->bg; /* VAXP_TERM_ATTR_INVERSE */
-            if (match_mask && match_mask[i]) c_fg = vaxp_color_rgba(0, 0, 0, 255);
-            
-            /* Adjust Y baseline like Cairo */
-            VaxpF32 draw_y = cy + cell_h - glyph->height * 0.8f;
-            VaxpF32 pts[8] = {cx, draw_y, cx+glyph->width, draw_y, cx+glyph->width, draw_y+glyph->height, cx, draw_y+glyph->height};
-            VaxpF32 uvs[8] = {glyph->u0, glyph->v0, glyph->u1, glyph->v0, glyph->u1, glyph->v1, glyph->u0, glyph->v1};
-            
-            gl_batch_push_quad(c, 1.0f, 0.0f, 0.0f, 0.0f, pts, uvs, c_fg, c->glyph_atlas_tex);
-            
-            if (cell->flags & 4) { /* Underline */
-                VaxpF32 pts_u[8] = {cx, cy + cell_h - 2, cx+cell_w, cy + cell_h - 2, cx+cell_w, cy + cell_h - 1, cx, cy + cell_h - 1};
-                VaxpF32 uvs_u[8] = {0,0, 0,0, 0,0, 0,0}; /* Type 0 (Solid Color) ignores UVs */
-                gl_batch_push_quad(c, 0.0f, 0.0f, 0.0f, 0.0f, pts_u, uvs_u, c_fg, 0);
-            }
+        memcpy(te_cells[i].ch, cells[i].ch, 5);
+        te_cells[i].fg.r = cells[i].fg.r;
+        te_cells[i].fg.g = cells[i].fg.g;
+        te_cells[i].fg.b = cells[i].fg.b;
+        te_cells[i].fg.a = cells[i].fg.a;
+        te_cells[i].flags = cells[i].flags;
+        /* Apply search match: invert fg to black on yellow */
+        if (match_mask && match_mask[i]) {
+            te_cells[i].fg.r = 0;
+            te_cells[i].fg.g = 0;
+            te_cells[i].fg.b = 0;
+            te_cells[i].fg.a = 255;
         }
     }
+    
+    /* Flush geometry batch before text engine */
+    gl_batch_flush(c);
+    
+    /* Set text engine transform to match canvas */
+    vaxp_text_engine_set_transform(c->text_engine, c->model_matrix);
+    
+    vaxp_text_engine_draw_cells(c->text_engine,
+                                 c->font_regular, c->font_bold,
+                                 te_cells, count,
+                                 start_x, y, cell_w, cell_h);
+    vaxp_text_engine_flush(c->text_engine);
+    
+    free(te_cells);
 }
 
 static void gl_canvas_draw_image(VaxpCanvas* canvas, const VaxpImage* image, VaxpF32 x, VaxpF32 y) {
@@ -1422,6 +1195,16 @@ VaxpResultPtr vaxp_canvas_create_opengl(Display* display, Window window,
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glViewport(0, 0, width, height);
+    
+    /* Create FreeType + HarfBuzz text engine (replaces Pango/Cairo completely) */
+    canvas->text_engine   = vaxp_text_engine_create();
+    canvas->font_regular  = VAXP_FONT_INVALID;
+    canvas->font_bold     = VAXP_FONT_INVALID;
+    canvas->term_font_size = 0.0f;
+    
+    if (!canvas->text_engine) {
+        fprintf(stderr, "[VAXPUI] Warning: Failed to create text engine\n");
+    }
     
     return VAXP_OK_PTR(canvas);
 }

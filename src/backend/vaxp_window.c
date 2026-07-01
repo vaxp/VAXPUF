@@ -177,10 +177,17 @@ VaxpResultPtr vaxp_window_create(const VaxpWindowConfig* config) {
     win->xwindow = (Window)(uintptr_t)xwin_result.value;
     
     /* Create canvas */
+#ifdef VAXP_USE_OPENGL
+    extern VaxpResultPtr vaxp_canvas_create_opengl(Display* display, Window window, VaxpU32 width, VaxpU32 height);
+    VaxpResultPtr canvas_result = vaxp_canvas_create_opengl(
+        x11->xdisplay, win->xwindow, win->width, win->height
+    );
+#else
     Visual* visual = DefaultVisual(x11->xdisplay, x11->default_screen);
     VaxpResultPtr canvas_result = vaxp_canvas_create_for_xlib(
         x11->xdisplay, win->xwindow, visual, win->width, win->height
     );
+#endif
     
     if (!canvas_result.ok) {
         vaxp_unref(win);
