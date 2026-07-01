@@ -14,6 +14,7 @@
 #include "vaxp/graphics/vaxp_canvas.h"
 
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>   /* XIconifyWindow */
 
 #ifdef VAXP_USE_OPENGL
 extern VaxpResultPtr vaxp_canvas_create_opengl(Display* display, Window window, 
@@ -45,12 +46,194 @@ static struct {
     clock_t start_time;
     VaxpU32 window_width;
     VaxpU32 window_height;
+    /* X11 window handle (needed by decoration callbacks) */
+    Window xwindow;
+    VaxpBool is_maximized;   /* current maximize state */
     
     /* Const Widget Registry */
     VaxpWidget** const_widgets;
     VaxpU32 const_count;
     VaxpU32 const_capacity;
 } g_app = {0};
+
+
+/* ============================================================================
+ * DECORATION BAR CALLBACKS
+ * ============================================================================ */
+
+static void _dec_close_cb(VaxpButton* b, void* data) {
+    (void)b; (void)data;
+    g_app.running = VAXP_FALSE;
+}
+
+static void _dec_minimize_cb(VaxpButton* b, void* data) {
+    (void)b; (void)data;
+    if (!g_app.display || !g_app.xwindow) return;
+    VaxpX11DisplayInternal* x11 = (VaxpX11DisplayInternal*)g_app.display;
+    XIconifyWindow(x11->xdisplay, g_app.xwindow, x11->default_screen);
+    XFlush(x11->xdisplay);
+}
+
+static void _dec_maximize_cb(VaxpButton* b, void* data) {
+    (void)b; (void)data;
+    if (!g_app.display || !g_app.xwindow) return;
+    VaxpX11DisplayInternal* x11 = (VaxpX11DisplayInternal*)g_app.display;
+    /* Toggle maximize via _NET_WM_STATE EWMH message */
+    Atom wm_state = XInternAtom(x11->xdisplay, "_NET_WM_STATE", False);
+    Atom max_h    = XInternAtom(x11->xdisplay, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+    Atom max_v    = XInternAtom(x11->xdisplay, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+    XEvent xev;
+    xev.type                  = ClientMessage;
+    xev.xclient.window        = g_app.xwindow;
+    xev.xclient.message_type  = wm_state;
+    xev.xclient.format        = 32;
+    xev.xclient.data.l[0]     = 2; /* _NET_WM_STATE_TOGGLE */
+    xev.xclient.data.l[1]     = (long)max_h;
+    xev.xclient.data.l[2]     = (long)max_v;
+    xev.xclient.data.l[3]     = 1; /* source: normal application */
+    xev.xclient.data.l[4]     = 0;
+    XSendEvent(x11->xdisplay, x11->root_window, False,
+               SubstructureRedirectMask | SubstructureNotifyMask, &xev);
+    XFlush(x11->xdisplay);
+    g_app.is_maximized = !g_app.is_maximized;
+}
+
+#define _DEC_DOT_SIZE  14.0f
+
+/**
+ * @brief Create a circular button dot (VaxpButton styled as a macOS traffic-light circle).
+ * The button locks its own size so the flex container cannot stretch it.
+ */
+static VaxpWidget* _dec_make_dot(VaxpColor color, VaxpColor hover_color,
+                                  VaxpButtonCallback cb) {
+    VaxpWidget* dot = _vaxp_btn_build(
+        "",  /* empty label */
+        &(VaxpButtonConfig){
+            .color         = color,
+            .text_color    = vaxp_color_rgba(0, 0, 0, 0),
+            .corner_radius = _DEC_DOT_SIZE / 2.0f,
+            .on_click      = cb
+        }
+    );
+    if (!dot) return NULL;
+    /* Lock to a perfect square so flex cannot stretch it */
+    dot->layout.min_width        = _DEC_DOT_SIZE;
+    dot->layout.min_height       = _DEC_DOT_SIZE;
+    dot->layout.preferred_width  = _DEC_DOT_SIZE;
+    dot->layout.preferred_height = _DEC_DOT_SIZE;
+    dot->layout.max_width        = _DEC_DOT_SIZE;
+    dot->layout.max_height       = _DEC_DOT_SIZE;
+    dot->layout.flex_grow        = 0;
+    dot->layout.flex_shrink      = 0;
+    dot->layout.align_self       = VAXP_ALIGN_CENTER;
+    /* Tweak hover/pressed colors */
+    VaxpButton* btn = (VaxpButton*)dot;
+    btn->bg_hover_color   = hover_color;
+    btn->bg_pressed_color = hover_color;
+    return dot;
+}
+
+/**
+ * @brief Wraps user_root with a macOS-style decoration bar.
+ *
+ *  ┌────────────────────────────────────────────┐
+ *  │ ● ● ●        Window Title                 │  ← 34 px bar
+ *  ├────────────────────────────────────────────┤
+ *  │            user content (flex)             │
+ *  └────────────────────────────────────────────┘
+ *
+ * Ownership: user_root ref is CONSUMED; returns a new widget (ref=1).
+ *
+ * Important: vaxp_widget_add_child() refs the child internally,
+ * so we call vaxp_unref() on each child AFTER adding it (not before).
+ */
+static VaxpWidget* _vaxp_build_decorated_root(VaxpWidget* user_root,
+                                               const char* title,
+                                               VaxpDecorationStyle style) {
+    if (!user_root || style == VAXP_DECORATION_NONE) return user_root;
+
+    /* ── Colors ──────────────────────────────────────────── */
+    VaxpColor dot_red    = vaxp_color_rgb(255, 95,  87);
+    VaxpColor dot_yellow = vaxp_color_rgb(255, 189, 46);
+    VaxpColor dot_green  = vaxp_color_rgb(40,  200, 64);
+    VaxpColor dot_red_h    = vaxp_color_rgb(235, 65,  55);
+    VaxpColor dot_yellow_h = vaxp_color_rgb(235, 165, 20);
+    VaxpColor dot_green_h  = vaxp_color_rgb(15,  175, 40);
+
+    VaxpColor bar_bg, title_col;
+    if (style == VAXP_DECORATION_DARK) {
+        bar_bg    = vaxp_color_rgba(28,  28,  30,  245);
+        title_col = vaxp_color_rgba(235, 235, 245, 200);
+    } else {
+        bar_bg    = vaxp_color_rgba(242, 242, 247, 245);
+        title_col = vaxp_color_rgba(30,  30,  30,  210);
+    }
+
+    /* ── Traffic-light dots ───────────────────────────────── */
+    VaxpWidget* dot_r = _dec_make_dot(dot_red,    dot_red_h,    _dec_close_cb);
+    VaxpWidget* dot_y = _dec_make_dot(dot_yellow, dot_yellow_h, _dec_minimize_cb);
+    VaxpWidget* dot_g = _dec_make_dot(dot_green,  dot_green_h,  _dec_maximize_cb);
+
+    /* Dots row: gap=8, ALIGN_CENTER so dots stay circular */
+    VaxpResultPtr dr_res = vaxp_container_create_row();
+    VaxpWidget* dots_row = NULL;
+    if (dr_res.ok) {
+        VaxpContainer* dr = (VaxpContainer*)dr_res.value;
+        vaxp_container_set_gap(dr, 8);
+        vaxp_container_set_align(dr, VAXP_ALIGN_CENTER);
+        if (dot_r) { vaxp_widget_add_child((VaxpWidget*)dr, dot_r); vaxp_unref(dot_r); }
+        if (dot_y) { vaxp_widget_add_child((VaxpWidget*)dr, dot_y); vaxp_unref(dot_y); }
+        if (dot_g) { vaxp_widget_add_child((VaxpWidget*)dr, dot_g); vaxp_unref(dot_g); }
+        ((VaxpWidget*)dr)->layout.flex_grow   = 0;
+        ((VaxpWidget*)dr)->layout.flex_shrink = 0;
+        ((VaxpWidget*)dr)->layout.align_self  = VAXP_ALIGN_CENTER;
+        dots_row = (VaxpWidget*)dr;
+    }
+
+    /* Title (centered via two flex spacers) */
+    VaxpWidget* spacer1   = vaxp_spacer();
+    VaxpWidget* spacer2   = vaxp_spacer();
+    VaxpWidget* title_lbl = _vaxp_text_build(
+        title ? title : "",
+        &(VaxpTextConfig){ .size = 13, .color = title_col }
+    );
+    if (title_lbl) title_lbl->layout.align_self = VAXP_ALIGN_CENTER;
+
+    /* Full bar row */
+    VaxpResultPtr br_res = vaxp_container_create_row();
+    VaxpWidget* dec_row = NULL;
+    if (br_res.ok) {
+        VaxpContainer* br = (VaxpContainer*)br_res.value;
+        vaxp_container_set_align(br, VAXP_ALIGN_CENTER);
+        vaxp_container_set_background(br, bar_bg);
+        ((VaxpWidget*)br)->layout.padding    = (VaxpInsets){10, 14, 10, 14};
+        ((VaxpWidget*)br)->layout.min_height = 34;
+        ((VaxpWidget*)br)->layout.flex_grow  = 0;
+        ((VaxpWidget*)br)->layout.flex_shrink = 0;
+        if (dots_row)  { vaxp_widget_add_child((VaxpWidget*)br, dots_row);  vaxp_unref(dots_row);  }
+        if (spacer1)   { vaxp_widget_add_child((VaxpWidget*)br, spacer1);   vaxp_unref(spacer1);   }
+        if (title_lbl) { vaxp_widget_add_child((VaxpWidget*)br, title_lbl); vaxp_unref(title_lbl); }
+        if (spacer2)   { vaxp_widget_add_child((VaxpWidget*)br, spacer2);   vaxp_unref(spacer2);   }
+        dec_row = (VaxpWidget*)br;
+    }
+
+    /* User content fills remaining height */
+    user_root->layout.flex_grow   = 1;
+    user_root->layout.flex_shrink = 1;
+
+    /* Outer column: [bar | content] */
+    VaxpResultPtr oc_res = vaxp_container_create_column();
+    VaxpWidget* outer = NULL;
+    if (oc_res.ok) {
+        VaxpContainer* oc = (VaxpContainer*)oc_res.value;
+        if (dec_row)   { vaxp_widget_add_child((VaxpWidget*)oc, dec_row);   vaxp_unref(dec_row);   }
+        if (user_root) { vaxp_widget_add_child((VaxpWidget*)oc, user_root); vaxp_unref(user_root); }
+        outer = (VaxpWidget*)oc;
+    }
+
+    return outer;
+}
+
 
 /* ============================================================================
  * CONST WIDGET REGISTRY
@@ -429,6 +612,7 @@ int vaxp_run_app(const VaxpAppConfig* config) {
         return 1;
     }
     Window xwindow = (Window)(uintptr_t)win_result.value;
+    g_app.xwindow = xwindow;   /* expose to decoration callbacks */
     
     /* Get actual window size (typed windows may have different size) */
     if (config->window_type != VAXP_WINDOW_NORMAL) {
@@ -474,6 +658,17 @@ int vaxp_run_app(const VaxpAppConfig* config) {
         return 1;
     }
     
+    /* Wrap with decoration bar if requested */
+    if (config->decoration != VAXP_DECORATION_NONE) {
+        g_app.root = _vaxp_build_decorated_root(g_app.root, title, config->decoration);
+        if (!g_app.root) {
+            fprintf(stderr, "VAXPUI: Failed to build decoration\n");
+            vaxp_unref(g_app.canvas);
+            vaxp_display_close(g_app.display);
+            return 1;
+        }
+    }
+    
     /* Initial layout */
     VaxpRectF bounds = { 0, 0, (VaxpF32)width, (VaxpF32)height };
     vaxp_widget_layout(g_app.root, bounds);
@@ -496,6 +691,10 @@ int vaxp_run_app(const VaxpAppConfig* config) {
         if (g_app.needs_rebuild) {
             vaxp_unref(g_app.root);
             g_app.root = config->build(config->user_data);
+            /* Re-wrap with decoration on rebuild */
+            if (g_app.root && config->decoration != VAXP_DECORATION_NONE) {
+                g_app.root = _vaxp_build_decorated_root(g_app.root, title, config->decoration);
+            }
             if (g_app.root) {
                 vaxp_widget_layout(g_app.root, bounds);
                 vaxp_focus_set_root(g_app.root);

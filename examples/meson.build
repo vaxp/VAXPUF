@@ -65,6 +65,11 @@ control_center_demo_exe = executable('control_center_demo',
     dependencies: vaxpui_dep,
 )
 
+decoration_demo_exe = executable('decoration_demo',
+    'decoration_demo.c',
+    dependencies: vaxpui_dep,
+)
+
 # OpenGL demo - only build when OpenGL backend is enabled
 if enable_opengl
     gl_dep_for_demo = dependency('gl', required: true)

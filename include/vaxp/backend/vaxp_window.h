@@ -39,6 +39,20 @@ typedef enum VaxpWindowFlags {
 } VaxpWindowFlags;
 
 /* ============================================================================
+ * WINDOW DECORATION STYLE
+ * ============================================================================ */
+
+/**
+ * @brief Style preset for the automatic decoration bar
+ */
+typedef enum VaxpDecorationStyle {
+    VAXP_DECORATION_NONE    = 0,  /**< No decoration bar */
+    VAXP_DECORATION_DEFAULT = 1,  /**< macOS-style dots (light background) */
+    VAXP_DECORATION_DARK    = 2,  /**< macOS-style dots (dark background) */
+    VAXP_DECORATION_LIGHT   = 3,  /**< macOS-style dots (explicit light) */
+} VaxpDecorationStyle;
+
+/* ============================================================================
  * WINDOW LIFECYCLE EVENTS
  * ============================================================================ */
 
@@ -77,9 +91,11 @@ typedef struct VaxpWindowConfig {
     VaxpU32 max_height;
     VaxpWindowFlags flags;
     VaxpColor background;
-    VaxpWidget* root;       /* Optional initial root widget */
+    VaxpWidget* root;           /* Optional initial root widget */
     VaxpWindowCallback on_event;
     void* event_user_data;
+    /* Decoration Bar */
+    VaxpDecorationStyle decoration; /**< Auto decoration bar style (VAXP_DECORATION_NONE to disable) */
 } VaxpWindowConfig;
 
 /* ============================================================================

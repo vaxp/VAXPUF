@@ -15,6 +15,7 @@
 #include "vaxp/widgets/vaxp_button.h"
 #include "vaxp/widgets/vaxp_label.h"
 #include "vaxp/widgets/vaxp_container.h"
+#include "vaxp/backend/vaxp_window.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,6 +47,8 @@ typedef struct VaxpAppConfig {
     VaxpBool debug;            /* Enable debug output */
     VaxpWindowType window_type;     /* Window type (default: NORMAL) */
     VaxpWindowPosition position;    /* Window position hint */
+    /* Decoration Bar */
+    VaxpDecorationStyle decoration; /**< Auto decoration bar (VAXP_DECORATION_NONE to disable) */
 } VaxpAppConfig;
 
 /**
