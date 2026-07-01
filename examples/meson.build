@@ -5,6 +5,11 @@ hello_world_exe = executable('hello_world',
     dependencies: vaxpui_dep,
 )
 
+calculator_demo_exe = executable('calculator_demo',
+    'calculator_demo.c',
+    dependencies: vaxpui_dep,
+)
+
 simple_app_exe = executable('simple_app',
     'simple_app.c',
     dependencies: vaxpui_dep,
