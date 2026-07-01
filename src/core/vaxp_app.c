@@ -235,6 +235,7 @@ static VaxpWidget* _vaxp_build_decorated_root(VaxpWidget* user_root,
     VaxpWidget* outer = NULL;
     if (oc_res.ok) {
         VaxpContainer* oc = (VaxpContainer*)oc_res.value;
+        vaxp_container_set_align(oc, VAXP_ALIGN_STRETCH);
         if (dec_row)   { vaxp_widget_add_child((VaxpWidget*)oc, dec_row);   vaxp_unref(dec_row);   }
         if (user_root) { vaxp_widget_add_child((VaxpWidget*)oc, user_root); vaxp_unref(user_root); }
         outer = (VaxpWidget*)oc;
