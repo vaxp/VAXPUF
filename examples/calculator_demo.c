@@ -171,71 +171,118 @@ static VaxpWidget* build_ui(void* ud) {
     (void)ud;
     CalcState* s = &g_cubit->state;
     
-    /* Theme Colors */
-    VaxpColor bg_color = vaxp_color_rgb(32, 33, 36);
-    VaxpColor disp_bg = vaxp_color_rgb(48, 49, 52);
-    VaxpColor btn_num = vaxp_color_rgb(60, 64, 67);
-    VaxpColor btn_op = vaxp_color_rgb(138, 180, 248);
-    VaxpColor btn_op_text = vaxp_color_rgb(32, 33, 36);
-    VaxpColor btn_special = vaxp_color_rgb(95, 99, 104);
+    /* Theme Colors (Exact match from Flutter) */
+    VaxpColor bg_color = vaxp_color_rgba(0, 0, 0, 0); /* Transparent */
+    VaxpColor btn_num = vaxp_color_rgba(142, 142, 147, 25);  /* systemGrey with 0.1 alpha */
+    VaxpColor btn_top = vaxp_color_rgb(142, 142, 147);       /* systemGrey */
+    VaxpColor btn_op = vaxp_color_rgb(57, 0, 104);           /* Solid Purple */
+    VaxpColor text_white = vaxp_color_rgba(255, 255, 255, 255); /* ARGB(221,255,255,255) */
     
     /* Helper macros for buttons */
     #define NUM_BTN(label, val) \
-        vaxp_flex(vaxp_btn(label, .color = btn_num, .text_color = VAXP_COLOR_WHITE, .on_click = cb_digit, .on_click_data = (void*)(intptr_t)val), 1)
+        vaxp_flex(vaxp_btn(label, .color = btn_num, .text_color = text_white, .corner_radius = 12, .on_click = cb_digit, .on_click_data = (void*)(intptr_t)val), 1)
     
+    #define TOP_BTN(label, cb) \
+        vaxp_flex(vaxp_btn(label, .color = btn_top, .text_color = text_white, .corner_radius = 12, .on_click = cb), 1)
+        
     #define OP_BTN(label, op) \
-        vaxp_flex(vaxp_btn(label, .color = btn_op, .text_color = btn_op_text, .on_click = cb_operator, .on_click_data = (void*)(intptr_t)op), 1)
+        vaxp_flex(vaxp_btn(label, .color = btn_op, .text_color = text_white, .corner_radius = 12, .on_click = cb_operator, .on_click_data = (void*)(intptr_t)op), 1)
 
     return vaxp_col(
-        .padding = (VaxpInsets){20, 20, 20, 20},
-        .gap = 12,
         .align = VAXP_ALIGN_STRETCH,
         .background = bg_color,
         .children = VAXP_CHILDREN(
             
-            /* Display Area */
+            /* Custom Top Bar */
+            vaxp_row(
+                .padding = (VaxpInsets){8, 10, 8, 25}, /* vertical: 8, horizontal: 10 + 15 left padding for title */
+                .justify = VAXP_JUSTIFY_SPACE_BETWEEN,
+                .align = VAXP_ALIGN_CENTER,
+                .children = VAXP_CHILDREN(
+                    vaxp_text("Calculator", .color = VAXP_COLOR_WHITE, .size = 20),
+                    vaxp_row(
+                        .gap = 8,
+                        .children = VAXP_CHILDREN(
+                            vaxp_col(.padding = (VaxpInsets){7,7,7,7}, .background = vaxp_color_rgb(255, 189, 46), .corner_radius = 7),
+                            vaxp_col(.padding = (VaxpInsets){7,7,7,7}, .background = vaxp_color_rgb(40, 200, 64), .corner_radius = 7),
+                            vaxp_col(.padding = (VaxpInsets){7,7,7,7}, .background = vaxp_color_rgb(255, 95, 87), .corner_radius = 7)
+                        )
+                    )
+                )
+            ),
+            
+            /* =========================================================
+             * 1. منطقة الشاشة (Display Area)
+             * HOW TO ADJUST DISPLAY HEIGHT (كيفية تعديل ارتفاع الشاشة):
+             * الرقم 2 في نهاية هذه الدالة (vaxp_flex(..., 2)) يمثل نسبة الارتفاع.
+             * يمكنك تكبير هذا الرقم (مثلاً 3 أو 4) لزيادة المساحة العلوية للرقم 0.
+             * ========================================================= */
             vaxp_flex(
                 vaxp_col(
                     .justify = VAXP_JUSTIFY_END,
                     .align = VAXP_ALIGN_END,
-                    .padding = (VaxpInsets){20, 20, 20, 20},
-                    .background = disp_bg,
-                    .corner_radius = 12,
+                    .padding = (VaxpInsets){24, 24, 24, 24},
                     .children = VAXP_CHILDREN(
-                        vaxp_text(s->display, .size = 48, .color = VAXP_COLOR_WHITE)
+                        vaxp_text(" ", .size = 40, .color = vaxp_color_rgba(255, 255, 255, 255)),
+                        /* 
+                         * HOW TO ADJUST RESULT TEXT SIZE (حجم نص النتيجة أو الرقم):
+                         * يمكنك تغيير الـ .size = 52 إلى أي رقم تريده لتكبير الرقم.
+                         */
+                        vaxp_text(s->display, .size = 82, .color = VAXP_COLOR_WHITE)
                     )
-                ), 1 /* Flex grow to fill top area */
+                ), 2 /* <--- نسبة الارتفاع للشاشة (غيرها لتكبير أو تصغير المساحة) */
             ),
             
-            /* Row 1: C, +/-, %, / */
-            vaxp_flex(vaxp_row(.gap = 12, .align = VAXP_ALIGN_STRETCH, .children = VAXP_CHILDREN(
-                vaxp_flex(vaxp_btn("C", .color = btn_special, .text_color = VAXP_COLOR_WHITE, .on_click = cb_clear), 1),
-                vaxp_flex(vaxp_btn("+/-", .color = btn_special, .text_color = VAXP_COLOR_WHITE, .on_click = cb_pm), 1),
-                vaxp_flex(vaxp_btn("%", .color = btn_special, .text_color = VAXP_COLOR_WHITE, .on_click = cb_pct), 1),
-                OP_BTN("/", '/')
-            )), 1),
-            
-            /* Row 2: 7, 8, 9, * */
-            vaxp_flex(vaxp_row(.gap = 12, .align = VAXP_ALIGN_STRETCH, .children = VAXP_CHILDREN(
-                NUM_BTN("7", 7), NUM_BTN("8", 8), NUM_BTN("9", 9), OP_BTN("x", '*')
-            )), 1),
-            
-            /* Row 3: 4, 5, 6, - */
-            vaxp_flex(vaxp_row(.gap = 12, .align = VAXP_ALIGN_STRETCH, .children = VAXP_CHILDREN(
-                NUM_BTN("4", 4), NUM_BTN("5", 5), NUM_BTN("6", 6), OP_BTN("-", '-')
-            )), 1),
-            
-            /* Row 4: 1, 2, 3, + */
-            vaxp_flex(vaxp_row(.gap = 12, .align = VAXP_ALIGN_STRETCH, .children = VAXP_CHILDREN(
-                NUM_BTN("1", 1), NUM_BTN("2", 2), NUM_BTN("3", 3), OP_BTN("+", '+')
-            )), 1),
-            
-            /* Row 5: 0, ., = */
-            vaxp_flex(vaxp_row(.gap = 12, .align = VAXP_ALIGN_STRETCH, .children = VAXP_CHILDREN(
-                vaxp_flex(vaxp_btn("0", .color = btn_num, .text_color = VAXP_COLOR_WHITE, .on_click = cb_digit, .on_click_data = (void*)(intptr_t)0), 2), // flex = 2 (takes double space)
-                vaxp_flex(vaxp_btn(".", .color = btn_num, .text_color = VAXP_COLOR_WHITE, .on_click = cb_dot), 1),
-                vaxp_flex(vaxp_btn("=", .color = btn_op, .text_color = btn_op_text, .on_click = cb_equals), 1)
-            )), 1)
+            /* =========================================================
+             * 2. منطقة الأزرار (Keypad Area)
+             * HOW TO ADJUST KEYPAD HEIGHT (كيفية تعديل ارتفاع الأزرار):
+             * الرقم 3 في نهاية الـ vaxp_flex أدناه يمثل نسبة ارتفاع الأزرار.
+             * التناسب الحالي هو (الشاشة: 2) إلى (الأزرار: 3).
+             * ========================================================= */
+            vaxp_flex(
+                vaxp_col(
+                    .padding = (VaxpInsets){12, 8, 12, 8}, /* horizontal: 8, vertical: 12 */
+                    .gap = 12, /* المسافة العمودية بين الصفوف */
+                    .align = VAXP_ALIGN_STRETCH,
+                    .children = VAXP_CHILDREN(
+                        /* 
+                         * HOW TO ADJUST ROW HEIGHT (كيفية تعديل ارتفاع الصف الواحد):
+                         * الـ vaxp_flex(..., 1) تجعل الصف يتمدد عمودياً بالتساوي.
+                         * إذا أردت صفاً أطول من غيره، اجعل الرقم 2 مثلاً.
+                         */
+                        /* Row 1: AC, +/-, %, ÷ */
+                        vaxp_flex(vaxp_row(.gap = 12, .align = VAXP_ALIGN_STRETCH, .children = VAXP_CHILDREN(
+                            TOP_BTN("AC", cb_clear), TOP_BTN("+/-", cb_pm), TOP_BTN("%", cb_pct), OP_BTN("÷", '/')
+                        )), 1),
+                        
+                        /* Row 2: 7, 8, 9, × */
+                        vaxp_flex(vaxp_row(.gap = 12, .align = VAXP_ALIGN_STRETCH, .children = VAXP_CHILDREN(
+                            NUM_BTN("7", 7), NUM_BTN("8", 8), NUM_BTN("9", 9), OP_BTN("×", '*')
+                        )), 1),
+                        
+                        /* Row 3: 4, 5, 6, - */
+                        vaxp_flex(vaxp_row(.gap = 12, .align = VAXP_ALIGN_STRETCH, .children = VAXP_CHILDREN(
+                            NUM_BTN("4", 4), NUM_BTN("5", 5), NUM_BTN("6", 6), OP_BTN("-", '-')
+                        )), 1),
+                        
+                        /* Row 4: 1, 2, 3, + */
+                        vaxp_flex(vaxp_row(.gap = 12, .align = VAXP_ALIGN_STRETCH, .children = VAXP_CHILDREN(
+                            NUM_BTN("1", 1), NUM_BTN("2", 2), NUM_BTN("3", 3), OP_BTN("+", '+')
+                        )), 1),
+                        
+                        /* Row 5: 0, ., = */
+                        vaxp_flex(vaxp_row(.gap = 12, .align = VAXP_ALIGN_STRETCH, .children = VAXP_CHILDREN(
+                            /* 
+                             * HOW TO ADJUST BUTTON WIDTH (كيفية تعديل عرض الزر الواحد):
+                             * زر الـ "0" يأخذ vaxp_flex(..., 2) لكي يكون عرضه ضعف الأزرار الأخرى.
+                             */
+                            vaxp_flex(vaxp_btn("0", .color = btn_num, .text_color = text_white, .corner_radius = 12, .on_click = cb_digit, .on_click_data = (void*)(intptr_t)0), 2),
+                            vaxp_flex(vaxp_btn(".", .color = btn_num, .text_color = text_white, .corner_radius = 12, .on_click = cb_dot), 1),
+                            vaxp_flex(vaxp_btn("=", .color = btn_op, .text_color = text_white, .corner_radius = 12, .on_click = cb_equals), 1)
+                        )), 1)
+                    )
+                ), 3 /* <--- نسبة الارتفاع لمنطقة الأزرار مقارنة بالشاشة */
+            )
         )
     );
 }
@@ -255,9 +302,10 @@ int main(void) {
     if (!g_cubit) return 1;
     
     int ret = VAXP_APP(
-        .title = "VAXPUI Calculator",
-        .width = 360,
-        .height = 560,
+        .title = "Calculator",
+        .width = 405,
+        .height = 700,
+        .background = vaxp_color_rgba(0, 0, 0, 100), /* Scaffold background opacity */
         .build = build_ui
     );
     

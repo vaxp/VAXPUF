@@ -373,7 +373,7 @@ int vaxp_run_app(const VaxpAppConfig* config) {
     VaxpU32 width = config->width > 0 ? config->width : 800;
     VaxpU32 height = config->height > 0 ? config->height : 600;
     const char* title = config->title ? config->title : "VAXPUI App";
-    VaxpColor bg = config->background.a > 0 ? config->background : vaxp_color_rgb(250, 250, 252);
+    VaxpColor bg = config->background.a > 0 ? config->background : vaxp_color_rgba(0, 0, 0, 77);
     
     g_app.window_width = width;
     g_app.window_height = height;
@@ -489,6 +489,9 @@ int vaxp_run_app(const VaxpAppConfig* config) {
             g_app.root = config->build(config->user_data);
             if (g_app.root) {
                 vaxp_widget_layout(g_app.root, bounds);
+                vaxp_focus_set_root(g_app.root);
+            } else {
+                vaxp_focus_clear();
             }
             g_app.needs_rebuild = VAXP_FALSE;
             needs_redraw = VAXP_TRUE;

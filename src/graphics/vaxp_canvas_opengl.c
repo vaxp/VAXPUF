@@ -1046,7 +1046,33 @@ VaxpResultPtr vaxp_canvas_create_opengl(Display* display, Window window,
         return VAXP_ERR_PTR(VAXP_ERROR_SURFACE_CREATE);
     }
     
-    GLXFBConfig best_fbc = fbc[0];
+    /* Get window's visual ID */
+    XWindowAttributes window_attrs;
+    XGetWindowAttributes(display, window, &window_attrs);
+    VisualID window_visual_id = XVisualIDFromVisual(window_attrs.visual);
+    
+    GLXFBConfig best_fbc = NULL;
+    for (int i = 0; i < fbcount; i++) {
+        XVisualInfo* vi = glXGetVisualFromFBConfig(display, fbc[i]);
+        if (vi) {
+            if (vi->visualid == window_visual_id) {
+                best_fbc = fbc[i];
+                XFree(vi);
+                break;
+            }
+            XFree(vi);
+        }
+    }
+    
+    if (!best_fbc) {
+        best_fbc = fbc[0]; /* Fallback */
+        XVisualInfo* fb_vi = glXGetVisualFromFBConfig(display, best_fbc);
+        fprintf(stderr, "VAXPUI GL: No exact FBConfig match! Window Visual: %lu, Fallback FBConfig Visual: %lu\n", 
+                (unsigned long)window_visual_id, fb_vi ? (unsigned long)fb_vi->visualid : 0);
+        if (fb_vi) XFree(fb_vi);
+    } else {
+        fprintf(stderr, "VAXPUI GL: Matched FBConfig perfectly with Window Visual ID: %lu\n", (unsigned long)window_visual_id);
+    }
     XFree(fbc);
     
     /* Create OpenGL 3.3 Core context */

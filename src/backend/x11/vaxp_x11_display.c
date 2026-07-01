@@ -379,15 +379,44 @@ static VaxpResultPtr x11_create_window(VaxpDisplay* display, const char* title,
         return VAXP_ERR_PTR(VAXP_ERROR_OUT_OF_MEMORY);
     }
     
+    /* Find 32-bit ARGB visual for transparency */
+    XVisualInfo vinfo;
+    Visual* visual = CopyFromParent;
+    int depth = CopyFromParent;
+    Colormap colormap = 0;
+    
+    if (XMatchVisualInfo(d->xdisplay, d->default_screen, 32, TrueColor, &vinfo)) {
+        visual = vinfo.visual;
+        depth = vinfo.depth;
+        colormap = XCreateColormap(d->xdisplay, d->root_window, visual, AllocNone);
+        fprintf(stderr, "VAXPUI: Using 32-bit ARGB visual! (ID: %lu, Depth: %d)\n", (unsigned long)visual->visualid, depth);
+    }
+    
+    XSetWindowAttributes swa = {0};
+    unsigned long mask = 0;
+    
+    if (colormap) {
+        swa.colormap = colormap;
+        swa.background_pixel = 0;
+        swa.border_pixel = 0;
+        mask |= CWColormap | CWBackPixel | CWBorderPixel;
+    } else {
+        swa.background_pixel = BlackPixel(d->xdisplay, d->default_screen);
+        mask |= CWBackPixel;
+    }
+    
     /* Create the window */
-    Window xwindow = XCreateSimpleWindow(
+    Window xwindow = XCreateWindow(
         d->xdisplay,
         d->root_window,
         x, y,
         width, height,
         0,  /* border width */
-        BlackPixel(d->xdisplay, d->default_screen),
-        WhitePixel(d->xdisplay, d->default_screen)
+        depth,
+        InputOutput,
+        visual,
+        mask,
+        &swa
     );
     
     if (xwindow == 0) {
@@ -508,6 +537,21 @@ static VaxpResultPtr x11_create_window_typed(VaxpDisplay* display,
         height = screen_height;
     }
     
+    /* Find 32-bit ARGB visual for transparency */
+    XVisualInfo vinfo;
+    Visual* visual = CopyFromParent;
+    int depth = CopyFromParent;
+    Colormap colormap = 0;
+    
+    if (XMatchVisualInfo(d->xdisplay, d->default_screen, 32, TrueColor, &vinfo)) {
+        visual = vinfo.visual;
+        depth = vinfo.depth;
+        colormap = XCreateColormap(d->xdisplay, d->root_window, visual, AllocNone);
+        fprintf(stderr, "VAXPUI: Using 32-bit ARGB visual! (ID: %lu, Depth: %d)\n", (unsigned long)visual->visualid, depth);
+    } else {
+        fprintf(stderr, "VAXPUI: Failed to find 32-bit visual, using CopyFromParent\n");
+    }
+    
     /* Create window with attributes */
     XSetWindowAttributes swa = {0};
     swa.event_mask = ExposureMask | StructureNotifyMask | FocusChangeMask |
@@ -515,9 +559,19 @@ static VaxpResultPtr x11_create_window_typed(VaxpDisplay* display,
                      ButtonPressMask | ButtonReleaseMask |
                      PointerMotionMask | EnterWindowMask | LeaveWindowMask;
     swa.override_redirect = override_redirect ? True : False;
-    swa.background_pixel = BlackPixel(d->xdisplay, d->default_screen);
     
-    unsigned long mask = CWEventMask | CWBackPixel;
+    unsigned long mask = CWEventMask;
+    
+    if (colormap) {
+        swa.colormap = colormap;
+        swa.background_pixel = 0;
+        swa.border_pixel = 0;
+        mask |= CWColormap | CWBackPixel | CWBorderPixel;
+    } else {
+        swa.background_pixel = BlackPixel(d->xdisplay, d->default_screen);
+        mask |= CWBackPixel;
+    }
+    
     if (override_redirect) {
         mask |= CWOverrideRedirect;
     }
@@ -528,9 +582,9 @@ static VaxpResultPtr x11_create_window_typed(VaxpDisplay* display,
         x, y,
         width, height,
         0,
-        CopyFromParent,
+        depth,
         InputOutput,
-        CopyFromParent,
+        visual,
         mask,
         &swa
     );
