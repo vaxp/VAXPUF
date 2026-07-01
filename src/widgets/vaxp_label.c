@@ -47,7 +47,7 @@ static void label_measure(VaxpWidget* widget, VaxpF32 available_width, VaxpF32 a
     VaxpF32 text_height = label->font_size * 1.4f;
     
     if (label->text) {
-        text_width = strlen(label->text) * (label->font_size * 1.0f);
+        text_width = strlen(label->text) * (label->font_size * 0.60f);
     }
     
     *out_width = text_width + widget->layout.padding.left + widget->layout.padding.right;
@@ -65,7 +65,7 @@ static void label_draw(VaxpWidget* widget, VaxpCanvas* canvas) {
     }
     
     /* Calculate text position based on alignment */
-    VaxpF32 text_width = strlen(label->text) * (label->font_size * 1.0f);
+    VaxpF32 text_width = strlen(label->text) * (label->font_size * 0.60f);
     VaxpF32 x = widget->layout.padding.left;
     
     switch (label->align) {
@@ -79,7 +79,7 @@ static void label_draw(VaxpWidget* widget, VaxpCanvas* canvas) {
             break;
     }
     
-    VaxpF32 y = (widget->bounds.height + label->font_size * 0.35f) / 2;
+    VaxpF32 y = (widget->bounds.height - label->font_size) / 2;
     
     VaxpPaint paint = vaxp_paint_fill(color);
     VaxpFont font = {0};

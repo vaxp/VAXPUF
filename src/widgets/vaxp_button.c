@@ -70,8 +70,8 @@ static void button_measure(VaxpWidget* widget, VaxpF32 available_width, VaxpF32 
     VaxpF32 text_height = btn->font_size * 1.2f;  /* Approximate line height */
     
     if (btn->label) {
-        /* Simple estimation: ~7 pixels per character */
-        text_width = strlen(btn->label) * (btn->font_size * 0.5f);
+        /* Simple estimation: ~0.6 ratio for monospace */
+        text_width = strlen(btn->label) * (btn->font_size * 0.60f);
     }
     
     *out_width = text_width + widget->layout.padding.left + widget->layout.padding.right;
@@ -116,10 +116,10 @@ static void button_draw(VaxpWidget* widget, VaxpCanvas* canvas) {
     
     /* Draw text centered */
     if (btn->label) {
-        VaxpF32 text_width = strlen(btn->label) * (btn->font_size * 0.65f);
+        VaxpF32 text_width = strlen(btn->label) * (btn->font_size * 0.60f);
         VaxpF32 text_height = btn->font_size;
         VaxpF32 x = (widget->bounds.width - text_width) / 2;
-        VaxpF32 y = (widget->bounds.height + text_height * 0.35f) / 2;  /* Baseline adjust */
+        VaxpF32 y = (widget->bounds.height - text_height) / 2;  /* Top-Left adjust */
         
         VaxpPaint text_paint = vaxp_paint_fill(btn->text_color);
         VaxpFont font = {0};
