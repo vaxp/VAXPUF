@@ -44,9 +44,6 @@ typedef struct VaxpImageData {
     VaxpU32 height;            /* Image height */
     VaxpU32 stride;            /* Bytes per row */
     
-    /* Cairo surface for efficient rendering */
-    void* cairo_surface;        /* cairo_surface_t* */
-    
     /* OpenGL texture handle */
     VaxpU32 gl_texture;         
     

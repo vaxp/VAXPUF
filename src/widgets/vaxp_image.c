@@ -9,7 +9,6 @@
 #include <string.h>
 #include <strings.h>  /* For strcasecmp */
 #include <stdio.h>
-#include <cairo/cairo.h>
 #include <png.h>
 
 /* ============================================================================
@@ -18,11 +17,6 @@
 
 static void image_data_destructor(void* self) {
     VaxpImageData* img = (VaxpImageData*)self;
-    
-    if (img->cairo_surface) {
-        cairo_surface_destroy((cairo_surface_t*)img->cairo_surface);
-        img->cairo_surface = NULL;
-    }
     
     if (img->pixels) {
         vaxp_free(img->pixels, img->stride * img->height);
@@ -101,8 +95,8 @@ VaxpResultPtr vaxp_image_load_file(const char* path) {
         
         png_read_update_info(png, info);
         
-        /* Allocate pixel buffer with Cairo stride */
-        VaxpU32 stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, width);
+        /* Allocate pixel buffer */
+        VaxpU32 stride = width * 4;
         VaxpU8* pixels = (VaxpU8*)vaxp_alloc(stride * height);
         if (!pixels) {
             png_destroy_read_struct(&png, &info, NULL);
@@ -130,20 +124,7 @@ VaxpResultPtr vaxp_image_load_file(const char* path) {
         png_destroy_read_struct(&png, &info, NULL);
         fclose(fp);
         
-        /* Premultiply alpha for Cairo */
-        for (VaxpU32 y = 0; y < height; y++) {
-            VaxpU8* row = pixels + y * stride;
-            for (VaxpU32 x = 0; x < width; x++) {
-                VaxpU8* px = row + x * 4;
-                VaxpU8 a = px[3];
-                if (a != 255) {
-                    px[0] = (VaxpU8)((px[0] * a) / 255);
-                    px[1] = (VaxpU8)((px[1] * a) / 255);
-                    px[2] = (VaxpU8)((px[2] * a) / 255);
-                }
-            }
-        }
-        
+
         /* Create image data */
         VaxpImageData* img = VAXP_REF_NEW(VaxpImageData, image_data_destructor);
         if (!img) {
@@ -156,15 +137,6 @@ VaxpResultPtr vaxp_image_load_file(const char* path) {
         img->height = height;
         img->stride = stride;
         
-        /* Create Cairo surface from pixel data */
-        img->cairo_surface = cairo_image_surface_create_for_data(
-            pixels, CAIRO_FORMAT_ARGB32, width, height, stride);
-        
-        if (cairo_surface_status((cairo_surface_t*)img->cairo_surface) != CAIRO_STATUS_SUCCESS) {
-            vaxp_unref(img);
-            return VAXP_ERR_PTR(VAXP_ERROR_SURFACE_CREATE);
-        }
-        
         return VAXP_OK_PTR(img);
     }
     
@@ -173,7 +145,7 @@ VaxpResultPtr vaxp_image_load_file(const char* path) {
 }
 
 VaxpResultPtr vaxp_image_create(VaxpU32 width, VaxpU32 height) {
-    VaxpU32 stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, width);
+    VaxpU32 stride = width * 4;
     VaxpU8* pixels = (VaxpU8*)vaxp_alloc(stride * height);
     if (!pixels) return VAXP_ERR_PTR(VAXP_ERROR_OUT_OF_MEMORY);
     
@@ -189,9 +161,6 @@ VaxpResultPtr vaxp_image_create(VaxpU32 width, VaxpU32 height) {
     img->width = width;
     img->height = height;
     img->stride = stride;
-    img->cairo_surface = cairo_image_surface_create_for_data(
-        pixels, CAIRO_FORMAT_ARGB32, width, height, stride);
-    
     return VAXP_OK_PTR(img);
 }
 
@@ -248,10 +217,7 @@ static void image_widget_measure(VaxpWidget* widget, VaxpF32 available_width, Va
 static void image_widget_draw(VaxpWidget* widget, VaxpCanvas* canvas) {
     VaxpImageWidget* img = (VaxpImageWidget*)widget;
     
-    if (!img->image || !img->image->cairo_surface) return;
-    
-    /* Get underlying Cairo context (this is a Cairo-specific implementation detail) */
-    /* For a generic approach, we'd add draw_image to canvas interface */
+    if (!img->image) return;
     
     VaxpF32 bounds_w = widget->bounds.width;
     VaxpF32 bounds_h = widget->bounds.height;

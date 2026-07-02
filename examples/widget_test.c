@@ -25,8 +25,8 @@ typedef struct {
     Window root_window;
 } VaxpX11Display;
 
-extern VaxpResultPtr vaxp_canvas_create_for_xlib(Display* display, Window window, 
-                                                    Visual* visual, VaxpU32 width, VaxpU32 height);
+extern VaxpResultPtr vaxp_canvas_create_opengl(Display* display, Window window, 
+                                               VaxpU32 width, VaxpU32 height);
 
 static int current_batch = 1;
 
@@ -215,8 +215,7 @@ int main(int argc, char** argv) {
     Window xwin = (Window)(uintptr_t)win.value;
     
     /* Create canvas */
-    Visual* vis = DefaultVisual(x11->xdisplay, x11->default_screen);
-    VaxpResultPtr cvs = vaxp_canvas_create_for_xlib(x11->xdisplay, xwin, vis, w, h);
+    VaxpResultPtr cvs = vaxp_canvas_create_opengl(x11->xdisplay, xwin, w, h);
     if (!cvs.ok) { printf("Canvas failed\n"); return 1; }
     VaxpCanvas* canvas = (VaxpCanvas*)cvs.value;
     

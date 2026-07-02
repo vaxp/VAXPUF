@@ -27,24 +27,20 @@ glx_dep = dependency('glx', required: false)  # Part of X11/OpenGL
 # Skia dependency (may need custom handling)
 skia_dep = dependency('skia', required: false)
 
-# Fallback to Cairo if Skia not available
-cairo_dep = dependency('cairo', required: false)
 
 # NEW: FreeType + HarfBuzz + FriBidi for hardware-accelerated text (replaces Pango)
 freetype_dep = dependency('freetype2', required: true)
 harfbuzz_dep = dependency('harfbuzz',  required: true)
 fribidi_dep  = dependency('fribidi',   required: true)
 
-# PangoCairo kept only for Cairo canvas fallback (not OpenGL)
-pangocairo_dep = dependency('pangocairo', required: false)
 
 # Check for valid backend
 if enable_opengl
     if not gl_dep.found()
         error('OpenGL backend requested but OpenGL not found')
     endif
-elif not skia_dep.found() and not cairo_dep.found()
-    error('Either Skia, Cairo, or OpenGL is required for rendering')
+elif not skia_dep.found()
+    error('Either Skia or OpenGL is required for rendering')
 endif
 
 # Thread support for atomic operations
@@ -166,23 +162,17 @@ state_sources = files(
 
 # Graphics sources depend on available backend
 if enable_opengl
-    # OpenGL mode: FreeType+HarfBuzz text engine, no Pango dependency
+    # OpenGL mode: FreeType+HarfBuzz text engine
     graphics_sources = files(
         'src/graphics/vaxp_canvas_opengl.c',
-        'src/graphics/vaxp_text_engine.c',
-        'src/graphics/vaxp_canvas_cairo.c'  # Still needed for Cairo widgets
+        'src/graphics/vaxp_text_engine.c'
     )
     graphics_dep = gl_dep
-    graphics_extra_deps = [freetype_dep, harfbuzz_dep, fribidi_dep, cairo_dep, pangocairo_dep]
+    graphics_extra_deps = [freetype_dep, harfbuzz_dep, fribidi_dep]
 elif skia_dep.found()
     graphics_sources = files('src/graphics/vaxp_canvas_skia.cpp')
     graphics_dep = skia_dep
-    graphics_extra_deps = [pangocairo_dep]
-else
-    # Cairo fallback implementation
-    graphics_sources = files('src/graphics/vaxp_canvas_cairo.c')
-    graphics_dep = cairo_dep
-    graphics_extra_deps = [pangocairo_dep]
+    graphics_extra_deps = []
 endif
 
 all_sources = [
@@ -237,7 +227,7 @@ subdir('vaxp-de')
 subdir('apps')
 
 # Summary
-backend_name = 'Cairo'
+backend_name = 'Unknown'
 if enable_opengl
     backend_name = 'OpenGL'
 elif skia_dep.found()

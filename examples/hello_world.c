@@ -10,8 +10,8 @@
 
 /* We need access to X11 internals for canvas creation */
 /* This is a temporary solution - will be abstracted later */
-extern VaxpResultPtr vaxp_canvas_create_for_xlib(Display* display, Window window, 
-                                                    Visual* visual, VaxpU32 width, VaxpU32 height);
+extern VaxpResultPtr vaxp_canvas_create_opengl(Display* display, Window window, 
+                                               VaxpU32 width, VaxpU32 height);
 
 /* X11 display handle - from our display abstraction */
 typedef struct {
@@ -63,9 +63,8 @@ int main(void) {
     Window xwindow = (Window)(uintptr_t)window_result.value;
     
     /* Create Cairo canvas for the window */
-    Visual* visual = DefaultVisual(x11display->xdisplay, x11display->default_screen);
-    VaxpResultPtr canvas_result = vaxp_canvas_create_for_xlib(
-        x11display->xdisplay, xwindow, visual, win_width, win_height
+    VaxpResultPtr canvas_result = vaxp_canvas_create_opengl(
+        x11display->xdisplay, xwindow, win_width, win_height
     );
     if (!canvas_result.ok) {
         fprintf(stderr, "Failed to create canvas: %s\n",
